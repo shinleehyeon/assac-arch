@@ -1,0 +1,803 @@
+<title>PetClinic 인프라 지도</title>
+<style>
+/* layout: blueprint schematic — VPC as nested dashed containers, click a node to open a detail drawer with 실제 설정 / 왜 */
+:root{
+  --bg:#0b0f14;
+  --surface:#121821;
+  --surface-2:#1a222e;
+  --border:#2a3644;
+  --fg:#e7edf3;
+  --fg-dim:#8ea0b3;
+  --accent:#4fd1c5;
+  --accent-2:#f0b23c;
+  --danger:#e5605a;
+  --font-display:'IBM Plex Sans',-apple-system,sans-serif;
+  --font-mono:'IBM Plex Mono',ui-monospace,monospace;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="dark"]){
+    --bg:#f4f6f8;
+    --surface:#ffffff;
+    --surface-2:#eef1f4;
+    --border:#d7dee5;
+    --fg:#14202b;
+    --fg-dim:#5b6b7a;
+    --accent:#0f8f83;
+    --accent-2:#a5680c;
+    --danger:#b8342e;
+    color-scheme: light;
+  }
+}
+:root[data-theme="light"]{
+  --bg:#f4f6f8;
+  --surface:#ffffff;
+  --surface-2:#eef1f4;
+  --border:#d7dee5;
+  --fg:#14202b;
+  --fg-dim:#5b6b7a;
+  --accent:#0f8f83;
+  --accent-2:#a5680c;
+  --danger:#b8342e;
+  color-scheme: light;
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--fg);
+  font-family:var(--font-display);
+  background-image:
+    linear-gradient(var(--border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size:32px 32px;
+  background-attachment:fixed;
+  opacity:1;
+}
+body::before{content:none}
+
+.wrap{
+  max-width:1180px;
+  margin:0 auto;
+  padding:28px 16px 80px;
+}
+
+header.page{
+  padding-block:8px 24px;
+}
+.eyebrow{
+  font-family:var(--font-mono);
+  font-size:12px;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  color:var(--accent);
+  margin:0 0 8px;
+}
+h1{
+  font-size:clamp(22px,4vw,32px);
+  margin:0 0 8px;
+  text-wrap:balance;
+  letter-spacing:-.01em;
+}
+.sub{
+  color:var(--fg-dim);
+  font-size:14px;
+  margin:0;
+  max-width:60ch;
+  line-height:1.6;
+}
+.hint{
+  margin-top:14px;
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  font-family:var(--font-mono);
+  font-size:12px;
+  color:var(--fg-dim);
+  border:1px solid var(--border);
+  background:var(--surface);
+  padding:6px 12px;
+  border-radius:100px;
+}
+.hint .dot{width:6px;height:6px;border-radius:50%;background:var(--accent);flex:none;animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+@media (prefers-reduced-motion: reduce){.hint .dot{animation:none}}
+
+/* ---- diagram ---- */
+.diagram{
+  display:flex;
+  flex-direction:column;
+  gap:18px;
+}
+
+.flow-row{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+}
+.arrow{
+  color:var(--fg-dim);
+  font-family:var(--font-mono);
+  font-size:14px;
+  flex:none;
+}
+
+.node{
+  border:1px solid var(--border);
+  background:var(--surface);
+  border-radius:10px;
+  padding:12px 14px;
+  cursor:pointer;
+  text-align:left;
+  font-family:inherit;
+  color:var(--fg);
+  transition:border-color .15s ease, transform .15s ease, background .15s ease;
+  min-width:0;
+}
+.node:hover{border-color:var(--accent); transform:translateY(-1px)}
+.node:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+.node.active{border-color:var(--accent); background:var(--surface-2)}
+.node .k{
+  display:block;
+  font-family:var(--font-mono);
+  font-size:10px;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  color:var(--fg-dim);
+  margin-bottom:3px;
+}
+.node .t{
+  display:block;
+  font-size:14px;
+  font-weight:600;
+}
+.node .d{
+  display:block;
+  font-size:11.5px;
+  color:var(--fg-dim);
+  margin-top:2px;
+  font-family:var(--font-mono);
+}
+
+.node.small{padding:9px 12px}
+.node.small .t{font-size:12.5px}
+
+.node.danger{border-color:color-mix(in srgb, var(--danger) 45%, var(--border))}
+.node.danger .k{color:var(--danger)}
+.node.accent2 .k{color:var(--accent-2)}
+
+/* VPC container */
+.vpc{
+  border:1.5px dashed var(--border);
+  border-radius:14px;
+  padding:18px;
+  position:relative;
+}
+.vpc-label{
+  position:absolute;
+  top:-11px;
+  left:16px;
+  background:var(--bg);
+  padding:0 8px;
+  font-family:var(--font-mono);
+  font-size:11px;
+  letter-spacing:.08em;
+  color:var(--fg-dim);
+  text-transform:uppercase;
+}
+
+.az-row{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:16px;
+  margin-top:8px;
+}
+@media (max-width:720px){
+  .az-row{grid-template-columns:1fr}
+}
+
+.az{
+  border:1px dashed var(--border);
+  border-radius:10px;
+  padding:14px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+.az-label{
+  font-family:var(--font-mono);
+  font-size:11px;
+  color:var(--accent);
+  letter-spacing:.06em;
+}
+
+.subnet{
+  border:1px solid var(--border);
+  border-radius:8px;
+  padding:10px;
+  background:color-mix(in srgb, var(--surface) 60%, transparent);
+}
+.subnet-label{
+  font-family:var(--font-mono);
+  font-size:9.5px;
+  color:var(--fg-dim);
+  text-transform:uppercase;
+  letter-spacing:.06em;
+  margin-bottom:8px;
+  display:block;
+}
+.subnet .node{width:100%}
+.subnet-row{display:flex;flex-direction:column;gap:8px}
+
+.side-panels{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:14px;
+  margin-top:6px;
+}
+@media (max-width:820px){
+  .side-panels{grid-template-columns:1fr}
+}
+.panel{
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:14px;
+  background:var(--surface);
+}
+.panel h3{
+  margin:0 0 10px;
+  font-size:12px;
+  font-family:var(--font-mono);
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  color:var(--fg-dim);
+}
+.panel .node{margin-bottom:8px}
+.panel .node:last-child{margin-bottom:0}
+
+/* ---- detail drawer ---- */
+.scrim{
+  position:fixed; inset:0;
+  background:color-mix(in srgb, black 55%, transparent);
+  opacity:0; pointer-events:none;
+  transition:opacity .18s ease;
+  z-index:20;
+}
+.scrim.open{opacity:1; pointer-events:auto}
+
+.drawer{
+  position:fixed;
+  right:0; top:0; bottom:0;
+  width:min(440px, 100%);
+  background:var(--surface);
+  border-left:1px solid var(--border);
+  z-index:21;
+  transform:translateX(100%);
+  transition:transform .22s cubic-bezier(.2,.7,.3,1);
+  display:flex;
+  flex-direction:column;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+.drawer.open{transform:translateX(0)}
+@media (max-width:640px){
+  .drawer{
+    right:0; left:0; top:auto; width:auto;
+    max-height:82vh;
+    border-left:none;
+    border-top:1px solid var(--border);
+    border-radius:16px 16px 0 0;
+    transform:translateY(100%);
+  }
+  .drawer.open{transform:translateY(0)}
+}
+
+.drawer-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+  padding:20px 20px 14px;
+  border-bottom:1px solid var(--border);
+  flex:none;
+}
+.drawer-head .k{
+  font-family:var(--font-mono);
+  font-size:11px;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  color:var(--accent);
+  margin:0 0 6px;
+}
+.drawer-head h2{
+  margin:0;
+  font-size:19px;
+  letter-spacing:-.01em;
+}
+.close-btn{
+  flex:none;
+  width:32px;height:32px;
+  border-radius:8px;
+  border:1px solid var(--border);
+  background:var(--surface-2);
+  color:var(--fg-dim);
+  font-size:16px;
+  cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+}
+.close-btn:hover{color:var(--fg); border-color:var(--accent)}
+
+.drawer-body{
+  padding:18px 20px 28px;
+  overflow-y:auto;
+  min-width:0;
+}
+.field{margin-bottom:20px}
+.field:last-child{margin-bottom:0}
+.field-label{
+  font-family:var(--font-mono);
+  font-size:10.5px;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  color:var(--fg-dim);
+  margin:0 0 8px;
+}
+.field-value{
+  font-size:14px;
+  line-height:1.7;
+  margin:0;
+}
+.field-value.mono{
+  font-family:var(--font-mono);
+  font-size:12.5px;
+  background:var(--surface-2);
+  border:1px solid var(--border);
+  border-radius:8px;
+  padding:10px 12px;
+  white-space:pre-wrap;
+  word-break:break-word;
+  color:var(--fg);
+}
+.point-list{display:flex; flex-direction:column; gap:14px}
+.point{border-left:2px solid var(--accent); padding-left:12px}
+.point-h{margin:0 0 4px; font-size:12.5px; font-weight:600; color:var(--fg)}
+.point-t{margin:0; font-size:13px; line-height:1.65; color:var(--fg-dim)}
+.tag-row{display:flex; gap:6px; flex-wrap:wrap; margin-top:10px}
+.tag{
+  font-family:var(--font-mono);
+  font-size:10.5px;
+  border:1px solid var(--border);
+  color:var(--fg-dim);
+  padding:3px 8px;
+  border-radius:100px;
+}
+.tag.warn{border-color:color-mix(in srgb, var(--accent-2) 55%, var(--border)); color:var(--accent-2)}
+
+.empty-state{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  padding:40px 20px;
+  color:var(--fg-dim);
+  gap:8px;
+  flex:1;
+}
+.empty-state svg{opacity:.5; margin-bottom:6px}
+.empty-state p{margin:0; font-size:13px; line-height:1.6; max-width:28ch}
+
+footer.note{
+  margin-top:32px;
+  padding-top:18px;
+  border-top:1px solid var(--border);
+  font-size:12px;
+  color:var(--fg-dim);
+  font-family:var(--font-mono);
+  line-height:1.7;
+}
+</style>
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+
+<div class="wrap">
+  <header class="page">
+    <p class="eyebrow">assac / petclinic — infra map</p>
+    <h1>구성 요소를 눌러보세요</h1>
+    <p class="sub">실선 화살표는 요청 경로, 점선 박스는 VPC와 서브넷 경계예요. 각 노드를 클릭하면 실제 설정값과 그렇게 만든 이유가 오른쪽에 뜹니다.</p>
+    <span class="hint"><span class="dot"></span>총 22개 구성 요소 · 탭하여 탐색</span>
+  </header>
+
+  <div class="diagram">
+
+    <!-- entry flow -->
+    <div class="flow-row" id="flow-entry"></div>
+
+    <!-- VPC -->
+    <div class="vpc">
+      <span class="vpc-label">VPC · 10.0.0.0/16</span>
+
+      <div class="flow-row" id="flow-igw" style="margin-bottom:4px"></div>
+
+      <div class="az-row">
+        <div class="az">
+          <span class="az-label">AZ — ap-northeast-2a</span>
+          <div class="subnet">
+            <span class="subnet-label">public-subnet-a</span>
+            <div class="subnet-row" id="az-a-public"></div>
+          </div>
+          <div class="subnet">
+            <span class="subnet-label">was-subnet-a (private)</span>
+            <div class="subnet-row" id="az-a-was"></div>
+          </div>
+          <div class="subnet">
+            <span class="subnet-label">db-subnet-a (private)</span>
+            <div class="subnet-row" id="az-a-db"></div>
+          </div>
+        </div>
+
+        <div class="az">
+          <span class="az-label">AZ — ap-northeast-2c</span>
+          <div class="subnet">
+            <span class="subnet-label">public-subnet-c</span>
+            <div class="subnet-row" id="az-c-public"></div>
+          </div>
+          <div class="subnet">
+            <span class="subnet-label">was-subnet-c (private)</span>
+            <div class="subnet-row" id="az-c-was"></div>
+          </div>
+          <div class="subnet">
+            <span class="subnet-label">db-subnet-c (private)</span>
+            <div class="subnet-row" id="az-c-db"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- side panels: monitoring / cicd / audit -->
+    <div class="side-panels">
+      <div class="panel">
+        <h3>알림 · 모니터링</h3>
+        <div id="panel-monitor"></div>
+      </div>
+      <div class="panel">
+        <h3>감사 · 위협 탐지</h3>
+        <div id="panel-audit"></div>
+      </div>
+      <div class="panel">
+        <h3>IaC · CI/CD</h3>
+        <div id="panel-cicd"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <footer class="note">
+    조회만 하고 아무것도 바꾸지 않았어요 · 설정값은 실제 AWS 리소스에서 읽은 값, "왜"는 설정값과 작업 중 겪은 일에서 추론한 이유예요
+  </footer>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<div class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="drawer-title">
+  <div class="drawer-head">
+    <div>
+      <p class="k" id="drawer-kicker">SELECT A NODE</p>
+      <h2 id="drawer-title">구성 요소를 선택하세요</h2>
+    </div>
+    <button class="close-btn" id="drawer-close" aria-label="닫기">✕</button>
+  </div>
+  <div class="drawer-body" id="drawer-body">
+    <div class="empty-state">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+      <p>왼쪽 다이어그램에서 아무 박스나 눌러보세요. 실제 설정값과 그렇게 만든 이유를 보여드려요.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+
+  var DATA = {
+    user:{ kicker:'CLIENT', title:'사용자', config:'브라우저에서 assac.cloud 접속', why:'외부에서 서비스에 처음 접근하는 지점이에요.' },
+
+    route53:{ kicker:'DNS', title:'Route 53', config:'assac.cloud → A 레코드(별칭, Alias) → CloudFront', why:'기억하기 쉬운 커스텀 도메인을 쓰기 위해서예요. Alias 레코드라 CloudFront IP가 바뀌어도 자동으로 따라가요.',
+      points:[
+        {h:'왜 A 레코드에 IP를 직접 안 넣고 Alias인가', t:'CloudFront의 엣지 IP는 AWS가 내부적으로 여러 개를 운영하고 필요시 바꿔요. 일반 A 레코드로 IP를 박아두면 그 IP가 바뀌는 순간 도메인이 죽어요. Alias는 "IP가 아니라 CloudFront 도메인 자체를 가리키는" 방식이라 AWS가 IP를 바꿔도 자동으로 따라가고, 게다가 일반 CNAME과 달리 루트 도메인(zone apex)에도 쓸 수 있어요.'},
+        {h:'왜 Route 53인가 (다른 DNS 대신)', t:'AWS 리소스(CloudFront, ALB 등)와 같은 콘솔·IAM 안에서 관리되니까 권한 통제가 하나로 합쳐지고, Alias 레코드 같은 AWS 전용 기능을 쓸 수 있어요. 헬스체크 기반 라우팅으로 향후 장애조치(failover)도 같은 서비스 안에서 확장할 수 있고요.'}
+      ] },
+
+    cloudfront:{ kicker:'EDGE / CDN', title:'CloudFront', config:'HTTP/2, IPv6, redirect-to-https, TLSv1.2_2021, SNI-only 인증서', why:'HTTP 요청은 전부 HTTPS로 강제 전환해요. SNI-only를 쓴 이유는 전용 IP 방식(Dedicated IP)이 월 수백 달러가 들기 때문이고, TLS 1.2 미만 클라이언트는 아예 차단해서 오래된 암호화 방식을 막아요.',
+      points:[
+        {h:'왜 ALB 앞에 CloudFront를 뒀나', t:'ALB를 바로 노출하면 WAF를 우회할 방법이 생기고(직접 ALB로 요청), HTTPS 종단·전세계 엣지 캐싱·DDoS 1차 흡수(AWS Shield Standard 자동 포함) 같은 이점도 못 써요. CloudFront를 앞단에 두면 이 모든 게 한 번에 해결되고, ALB를 internal로 완전히 숨길 수 있어요.'},
+        {h:'왜 캐시 정책이 오리진 지시 기준인가(UseOriginCacheControlHeaders)', t:'PetClinic은 JSP로 매 요청마다 동적으로 렌더링되는 페이지예요. 기본 TTL을 길게 잡으면 방금 등록한 반려동물 정보가 다른 사용자에게 옛날 상태로 캐시되어 보일 수 있어요. 그래서 캐싱 여부·기간을 오리진(WAS)이 응답 헤더로 직접 판단하게 맡겼어요 — 정적 리소스는 캐시하고 동적 페이지는 캐시 안 하는 식으로 서버가 통제해요.'},
+        {h:'왜 GET~DELETE 전체 메서드를 허용했나', t:'CloudFront는 기본적으로 GET/HEAD만 캐시 대상으로 허용하는데, PetClinic은 반려동물 등록·수정 폼에서 POST/PUT을 써요. 이 메서드들을 막으면 CloudFront를 거치는 순간 쓰기 요청이 전부 실패해서, 전체 메서드를 오리진으로 통과시키도록 열어뒀어요.'},
+        {h:'왜 인증서가 us-east-1인가', t:'AWS 규칙이에요. CloudFront는 전세계 엣지에 배포되는 글로벌 서비스라, 다른 리전 인증서를 받지 않고 반드시 us-east-1(버지니아 북부)의 ACM 인증서만 사용할 수 있어요.'},
+        {h:'왜 PriceClass_All인가 (모든 엣지 로케이션 사용)', t:'PriceClass_100/200은 북미·유럽 등 일부 저가 리전 엣지만 쓰고, 아시아·남미 등은 제외돼서 그 지역 사용자는 더 먼 엣지로 우회해 지연이 늘어요. 사용자층이 국내로 한정된 초기 단계라 PriceClass_200(아시아 포함) 정도로도 충분할 수 있지만, 팀 프로젝트 규모의 트래픽에서는 전체 리전 간 요금 차이가 미미해서 지역 제약 없이 All로 설정했어요 — 트래픽이 크게 늘면 실제 사용자 분포를 보고 좁히는 걸 검토할 지점이에요.'},
+        {h:'기각한 대안 — S3 정적 호스팅 + API 서버 분리', t:'프론트를 완전히 정적으로 분리해서 S3+CloudFront로 서빙하고 API만 백엔드로 호출하는 SPA 구조도 고려할 수 있어요. 하지만 PetClinic은 JSP 기반 서버사이드 렌더링(SSR) 구조라 화면 자체가 서버에서 동적으로 생성돼요. 이 구조를 SPA로 바꾸려면 프론트를 통째로 재작성해야 해서, 기존 구조를 유지한 채 CloudFront를 리버스 프록시+CDN 용도로만 쓰는 지금 방식이 현실적이었어요.'}
+      ], tags:['ACM us-east-1','캐시 정책: UseOriginCacheControlHeaders'] },
+
+    waf:{ kicker:'EDGE / SECURITY', title:'WAF', config:'CloudFront에 연결, 기본 동작 Allow, 규칙 3종(우선순위순, 총 902 WCU)', why:'요청이 오리진(ALB)에 닿기 전에 공격 트래픽을 걸러내는 1차 방어선이에요.',
+      points:[
+        {h:'왜 기본 동작이 Block이 아니라 Allow인가', t:'WAF는 "명시적으로 걸러낼 패턴"만 규칙으로 등록하고, 나머지 정상 트래픽은 그대로 통과시키는 게 기본 철학이에요. 기본을 Block으로 하면 화이트리스트를 일일이 관리해야 해서 실무적이지 않고, 정상 사용자 요청까지 막을 위험이 커요.'},
+        {h:'왜 CommonRuleSet을 첫 번째로 뒀나', t:'XSS, 잘못된 호스트 헤더, 크기가 비정상적인 요청 등 웹 애플리케이션 전반에 통하는 공격 패턴을 걸러내요. 가장 넓은 범위의 관리형 규칙이라 우선순위 0으로 제일 먼저 평가해요.'},
+        {h:'왜 SQLiRuleSet을 따로 추가했나', t:'PetClinic은 JPA/JDBC로 MySQL을 직접 쓰는 앱이라, SQL Injection이 실제로 유효한 공격 경로예요. CommonRuleSet에도 일부 포함되지만, DB를 쓰는 앱이라는 특성 때문에 전용 규칙셋을 별도로 추가해서 탐지력을 높였어요.'},
+        {h:'왜 RateLimit을 IP당 5분·100건으로 잡았나', t:'PetClinic 같은 일반 웹앱에서 정상 사용자가 5분에 100번 이상 요청을 보내는 경우는 거의 없어요(페이지 이동, 폼 제출 다 합쳐도). 그 이상이면 크롤러·무차별 대입·DoS성 트래픽일 가능성이 높다고 보고 임계값을 잡았어요. 너무 낮게 잡으면 정상 사용자가 새로고침만 반복해도 차단될 수 있어서, 여유를 두면서도 자동화 트래픽은 걸러내는 수준으로 맞췄어요.'},
+        {h:'왜 규칙 순서(우선순위)가 Common → SQLi → RateLimit인가', t:'WAF는 우선순위 낮은 숫자부터 순서대로 평가하고, Block 판정이 나면 그 즉시 뒤 규칙은 평가하지 않아요. 계산 비용이 상대적으로 낮고 광범위한 CommonRuleSet을 가장 먼저 평가해서 명백한 공격은 빨리 걸러내고, 그다음 더 구체적인 SQLi를 보고, 마지막에 요청 빈도라는 별개 축을 보는 RateLimit을 두는 게 논리적인 순서고, 불필요한 뒤쪽 규칙 평가를 줄여 처리 비용도 아껴요.'},
+        {h:'WCU 예산은 얼마나 남았나', t:'현재 사용 중인 WCU(Web ACL Capacity Unit)는 약 902이고, WAF WebACL의 기본 한도는 1,500 WCU예요. 아직 약 600 WCU의 여유가 있어서, 향후 봇 관리(Bot Control)나 지역 차단(Geo-blocking) 같은 규칙을 추가로 붙일 여력이 있다는 뜻이에요. 이 여유치를 계속 확인해가며 규칙을 늘려야, 한도를 넘겨 규칙 추가가 막히는 상황을 피할 수 있어요.'}
+      ], tags:['CommonRuleSet — XSS 등 일반 웹 공격','SQLiRuleSet — DB 쓰는 앱이라 SQL 인젝션 방어','RateLimit — IP당 5분 100건 초과 시 Block(DoS 완화)'], extra:'차단 로그는 CloudWatch Logs에 쌓이고, BLOCK이 발생하면 Lambda가 Discord로 실시간 알림을 보내요. 최근 7일 차단 0건.' },
+
+    alb:{ kicker:'COMPUTE', title:'내부 ALB + VPC Origin', config:'internal 스킴, public 서브넷 2곳, cross-zone 활성화, HTTP/2, 액세스 로그 → S3(14일 보관)', why:'ALB에 공인 IP가 없어서 CloudFront를 거치지 않고는 접근이 불가능해요. 즉 WAF를 우회할 방법이 구조적으로 없어요.',
+      points:[
+        {h:'왜 internal(비공개) 스킴인가', t:'internet-facing으로 만들면 ALB 자체가 공인 IP를 받아서, 누군가 그 IP로 CloudFront를 건너뛰고 직접 접속해 WAF를 완전히 우회할 수 있어요. internal로 만들면 VPC 안에서만 접근 가능해서, CloudFront의 VPC Origin 기능을 통해서만 트래픽이 들어올 수 있어요.'},
+        {h:'왜 cross-zone 로드밸런싱을 켰나', t:'꺼져있으면 각 AZ의 ALB 노드가 "자기 AZ에 있는 타겟"에게만 트래픽을 보내요. 지금처럼 AZ마다 WAS가 1대씩이면, 특정 AZ에 요청이 몰릴 때 다른 AZ의 여유 있는 인스턴스를 못 써서 부하가 불균등해져요. cross-zone을 켜면 AZ 경계 없이 모든 healthy 타겟에 고르게 분산돼요.'},
+        {h:'왜 헬스체크 간격을 30초·정상 5회로 뒀나', t:'너무 자주(예: 5초) 체크하면 그 자체가 WAS에 부하를 주고, 너무 뜸하면(예: 2분) 장애 인스턴스가 오래 트래픽을 받아요. 30초·5회 연속 성공(=2분 30초 확인 시간)은 일시적 지연과 진짜 장애를 구분할 정도의 균형점이에요.'},
+        {h:'왜 등록 해제 지연을 300초→60초로 줄였나', t:'배포나 스케일 인으로 인스턴스를 뺄 때, ALB는 이 시간 동안 기존 연결이 끝나길 기다려요. 기본값 300초를 그대로 두면 배포 한 번에 인스턴스 하나 빼는 데만 5분이 걸려서, 여러 대를 순차 교체하는 롤링 배포 전체가 느려져요. PetClinic 요청은 대부분 수 초 안에 끝나는 짧은 트랜잭션이라, 60초면 충분히 안전하게 기존 요청을 마무리하면서도 배포 속도를 5배 가까이 앞당길 수 있었어요.'},
+        {h:'왜 VPC Origin 방식인가 (Public ALB + Origin Custom Header 대신)', t:'예전에는 ALB를 public으로 열어두고 CloudFront가 특정 커스텀 헤더를 보낼 때만 ALB가 응답하게 하는 방식(Origin Custom Header)으로 "우회 방지"를 흉내 냈어요. 하지만 이건 헤더 값이 유출되면 우회가 가능한 임시방편이에요. CloudFront VPC Origin은 ALB를 아예 internal로 두고 CloudFront가 VPC 안으로 직접 연결하는 최신 기능이라, 헤더 유출 같은 우회 경로 자체가 구조적으로 없어요. 이 프로젝트가 비교적 최근에 나온 이 기능을 채택한 이유예요.'},
+        {h:'대상 그룹 Deregistration Delay와 애플리케이션 특성의 관계', t:'만약 PetClinic에 장시간 걸리는 요청(대용량 파일 업로드, 긴 리포트 생성)이 있었다면 60초는 그 요청을 강제로 끊을 위험이 있어요. 실제로 이 값을 60초로 낮추기 전에, 애플리케이션의 최대 요청 처리 시간이 이보다 충분히 짧다는 걸 먼저 확인해야 하는 설정이에요 — 값 하나를 튜닝할 때도 애플리케이션 특성을 먼저 파악해야 하는 전형적인 예시예요.'}
+      ] },
+
+    was:{ kicker:'COMPUTE', title:'ASG — WAS (2대)', config:'Min 2 / Max 6, t3.medium(2vCPU·4GB), gp3 20GB(3000 IOPS), ELB 헬스체크(유예 300초), 목표 추적 스케일링(평균 CPU 70%)', why:'최소 2대를 두 AZ에 나눠 배치해 한쪽이 죽어도 서비스가 유지돼요. ELB 헬스체크라 앱 프로세스가 죽으면 인스턴스 자체를 교체해요.',
+      points:[
+        {h:'왜 t3.medium인가 (인스턴스 유형)', t:'JVM 힙(약 1.5~2GB) + Jetty + Docker 데몬 오버헤드 + OS(약 0.5GB)를 합치면 최소 3GB는 필요해서, 한 단계 아래인 t3.small(2GB)은 스왑이 나기 쉬워요. t3.medium(4GB)이 실사용 메모리에 가장 근접한 사이즈예요. vCPU 2개는 Jetty 스레드풀 + Docker 컨테이너 동시 처리에 필요한 최소치고요.'},
+        {h:'왜 t 계열(버스터블)인가', t:'PetClinic은 상시 고부하가 아니라 요청이 몰릴 때만 CPU가 튀는 패턴이에요. m5·c5 같은 고정 성능 인스턴스는 평소 유휴 자원을 그대로 돈 주고 놀리는 셈이라, 베이스라인은 낮고 크레딧으로 순간 버스트를 흡수하는 t3가 비용 대비 합리적이에요. Unlimited 모드로 크레딧 소진 시에도 서비스 저하 없이 초과 과금만 되도록 설정했어요.'},
+        {h:'왜 gp3 20GB인가 (볼륨)', t:'gp2는 용량에 비례해서 IOPS가 정해지는데(20GB면 100 IOPS 수준), gp3는 용량과 무관하게 기본 3,000 IOPS·125MB/s 처리량을 보장하면서 gp2보다 20% 저렴해요. 20GB는 OS + Docker 이미지 레이어 + 로그를 감안한 최소 여유치로, 앱 자체는 상태를 갖지 않는(stateless) 컨테이너라 큰 용량이 필요 없어요.'},
+        {h:'왜 ASG(오토스케일링)인가', t:'EC2 인스턴스를 고정 대수로 두면 트래픽이 몰릴 때 응답 지연이 생기고, 평소엔 과대 프로비저닝이 돼요. ASG는 CPU 70% 기준으로 자동으로 늘리고 줄여서, 사람이 지켜보지 않아도 수요에 맞춰 비용과 성능 균형을 맞춰요. Min 2는 고가용성(AZ당 1대) 하한선이고, Max 6은 예산 안에서 감당 가능한 상한선이에요.'},
+        {h:'왜 목표값이 70%지 50%나 90%가 아닌가', t:'목표 추적 스케일링은 목표치보다 낮으면 서서히 줄이고, 넘으면 새 인스턴스를 추가해요. 50%로 잡으면 아직 여유가 많은데도 자주 스케일 아웃해서 비용이 늘고, 90%로 잡으면 새 인스턴스가 뜨는 데 걸리는 시간(부팅+헬스체크 통과, 약 2~3분) 동안 기존 인스턴스가 거의 포화 상태로 버텨야 해서 응답 지연 위험이 커요. 70%는 스케일 아웃 결정을 내릴 시점에 아직 30%의 여유 버퍼가 있어서, 새 인스턴스가 준비될 때까지 기존 인스턴스가 감당할 시간을 벌어줘요.'},
+        {h:'왜 Max를 6으로 잡았나 (무한정 늘리지 않고)', t:'Max에 상한이 없으면 오작동(무한 루프, 잘못된 헬스체크 설정)으로 스케일 아웃이 폭주해도 자동으로 멈추질 않아서 비용이 통제 불능이 돼요. Max 6은 "이 이상 트래픽이 몰리면 사람이 개입해서 아키텍처 자체를 재검토해야 하는 수준"이라는 의미의 안전판이에요. 팀 예산(월 235달러 Budgets 알림)과 t3.medium 단가를 역산해서 감당 가능한 상한으로 정했어요.'},
+        {h:'기각한 대안 — Scheduled Scaling(시간대별 고정 스케줄)', t:'트래픽 패턴이 예측 가능하면 "평일 9시엔 4대, 새벽엔 2대"처럼 스케줄로 미리 늘려두는 방법도 있어요. 하지만 이 프로젝트는 아직 실사용 트래픽 패턴 데이터가 부족해서, 예측 기반 스케줄보다 실측 CPU에 반응하는 목표 추적 방식이 더 안전하다고 판단했어요.'}
+      ],
+      tags:['IMDSv2 필수(SSRF 방어)','커스텀 AMI로 빠른 스케일 아웃'] },
+
+    docker:{ kicker:'COMPUTE / PACKAGING', title:'Docker 컨테이너화', config:'Multi-stage Dockerfile — 빌드 스테이지(Maven+JDK)와 런타임 스테이지(JRE+Jetty) 분리, 최종 이미지만 ECR에 push', why:'"내 컴퓨터에선 됐는데" 문제를 근본적으로 없애기 위해서예요. 애플리케이션 + 실행 환경(JRE 버전, Jetty 설정, OS 라이브러리)을 하나의 불변 아티팩트로 묶어서, 로컬·CI·운영 서버가 완전히 같은 걸 실행하게 만들어요.',
+      points:[
+        {h:'왜 EC2에 직접 배포하지 않고 컨테이너로 감쌌나', t:'직접 배포하면 서버마다 JDK 버전, 환경변수, 파일 경로가 미묘하게 달라질 수 있어요. 컨테이너는 이 모든 걸 이미지 안에 고정해서, 어떤 인스턴스에서 띄워도 100% 같은 동작을 보장해요. 새 인스턴스가 ASG로 추가될 때도 "이미지 pull → 실행"만 하면 돼서 부팅이 빨라요.'},
+        {h:'왜 Multi-stage 빌드인가', t:'Maven·JDK 전체를 그대로 이미지에 넣으면 수백MB가 낭비돼요. 빌드는 별도 스테이지에서 하고, 최종 이미지엔 컴파일된 결과물과 JRE(전체 JDK 아님)만 남겨서 이미지 용량을 줄이고 공격 표면(불필요한 빌드 도구)도 없앴어요.'},
+        {h:'왜 ECR인가', t:'VPC 안에서 사설 네트워크로 이미지를 주고받을 수 있고, IAM으로 push/pull 권한을 세밀하게 제어할 수 있어서예요. Docker Hub 같은 퍼블릭 레지스트리보다 속도·보안 면에서 유리해요.'},
+        {h:'롤백이 쉬워지는 이유', t:'이미지에 커밋 해시 태그를 붙여두면, 문제가 생겼을 때 "이전 태그로 롤백"이 곧바로 이전 코드+환경 전체로 되돌아가는 걸 의미해요. 서버에 설치된 패키지를 하나씩 되돌릴 필요가 없어요.'},
+        {h:'레이어 캐싱을 어떻게 활용했나', t:'Dockerfile에서 pom.xml만 먼저 COPY해서 의존성을 받고, 그 다음에 소스 코드를 COPY하는 순서로 짜면, 소스만 바뀐 커밋에서는 Maven 의존성 다운로드 레이어가 캐시에서 재사용돼요. 순서를 반대로(소스 먼저) 하면 코드 한 줄만 바뀌어도 의존성을 매번 새로 받아서 빌드 시간이 크게 늘어나는데, 이걸 방지하려고 레이어 순서를 의도적으로 배치했어요.'},
+        {h:'기각한 대안 — EC2에 JAR만 올려서 직접 실행(컨테이너 없이)', t:'Docker 없이 JAR 파일만 scp로 옮기고 systemd로 직접 실행하는 더 단순한 방법도 있어요. 하지만 이러면 JRE 버전이 인스턴스마다 다를 수 있고, AMI를 새로 구울 때마다 JRE·Jetty 설정을 수동으로 다시 맞춰야 해요. 컨테이너는 이 환경 자체를 이미지에 고정해서 "AMI가 뭐든 상관없이 Docker만 있으면 동일하게 뜬다"를 보장해요.'}
+      ] },
+
+    asg_alert:{ kicker:'ALERT', title:'ASG 이벤트 알림', config:'인스턴스 생성/종료/오류 발생 → SNS 토픽 발행 → Lambda 트리거 → Discord 웹훅 전송 (+이메일 구독)', why:'인프라팀이 콘솔을 계속 들여다보지 않아도, 인스턴스가 교체되는 순간 Discord 채널로 바로 알 수 있게 하려고요.',
+      points:[
+        {h:'왜 SNS를 중간에 뒀나 (Lambda를 바로 안 부르고)', t:'ASG 이벤트를 Lambda 하나에만 직접 연결하면, 나중에 알림 채널을 추가하고 싶을 때(예: 이메일도 같이 받고 싶다) ASG 설정 자체를 건드려야 해요. SNS를 중간에 두면 "이벤트 발행"과 "누가 받을지"가 분리돼서, 구독자를 추가·제거해도 ASG 쪽 설정은 그대로 둘 수 있어요. 실제로 지금 Lambda(Discord용)와 이메일 구독자를 동시에 붙여둔 것도 이 구조 덕분이에요.'},
+        {h:'왜 Discord로 보내나', t:'팀이 실시간으로 보는 채널이 Discord라서예요. 이메일은 확인이 늦어질 수 있지만, Discord는 알림이 뜨는 즉시 팀원 전체가 볼 수 있어서 장애 대응 속도가 빨라져요.'}
+      ] },
+
+    rds:{ kicker:'DATA', title:'RDS — MySQL 8.4', config:'Multi-AZ(주 2c / 대기 2a), db.t3.small, gp3 20GB(최대 1,000GB 자동확장), KMS 암호화, 백업 7일 보존(03:29 KST), 유지보수 월요일 01:36 KST', why:'8.4는 장기 지원(LTS) 버전이에요. Multi-AZ는 동기 복제되는 대기 DB를 하나 더 두는 거라, 주 AZ에 장애가 나면 자동으로 전환돼요.',
+      points:[
+        {h:'왜 RDS(관리형)이고 EC2에 직접 MySQL을 안 깔았나', t:'직접 설치하면 백업, 패치, 장애 시 페일오버를 전부 팀이 스크립트로 만들어야 해요. RDS는 이걸 전부 관리형으로 제공해서, 팀 리소스를 인프라 유지보수 대신 애플리케이션에 집중할 수 있게 해줘요.'},
+        {h:'왜 Multi-AZ인가 (Read Replica가 아니라)', t:'Read Replica는 비동기 복제라 장애 시 최신 데이터 일부가 유실될 수 있고, 수동으로 승격(promote)해야 해요. Multi-AZ의 대기 인스턴스는 동기 복제라 데이터 유실이 없고, 주 인스턴스 장애 시 AWS가 자동으로 전환해줘서 사람 개입 없이 수 분 내 복구돼요. 이 프로젝트는 자동 복구가 더 중요해서 Multi-AZ를 골랐어요.'},
+        {h:'왜 db.t3.small인가', t:'현재 트래픽 규모(팀 프로젝트 수준)에서 db.m5 같은 고정 성능 인스턴스는 과도한 스펙이에요. t3는 버스터블이라 평소엔 저렴하게 운영하다가 쿼리가 몰릴 때 크레딧으로 순간 성능을 낼 수 있어서, 지금 규모엔 t3.small이 비용 대비 합리적이에요.'},
+        {h:'왜 gp3 20GB + 최대 1,000GB 자동 확장인가', t:'처음부터 큰 용량을 예약해두면 안 쓰는 공간에 비용을 내는 셈이라 20GB로 작게 시작했어요. 대신 자동 확장을 최대 1,000GB로 열어둬서, 데이터가 늘어나도 디스크가 꽉 차서 서비스가 멈추는 사고를 미리 방지했어요.'},
+        {h:'왜 백업·유지보수를 새벽 시간에 몰았나', t:'백업 스냅샷과 패치 작업은 순간적으로 I/O 부하를 유발할 수 있어요. 실사용자가 거의 없는 새벽 시간대(KST 기준 새벽 1~3시)로 맞춰서, 이 작업이 실제 서비스 응답 속도에 영향을 주지 않게 했어요.'},
+        {h:'왜 강화 모니터링을 15초 간격으로 뒀나 (기본 60초 대신)', t:'RDS 기본 CloudWatch 지표는 1분 단위라, CPU나 커넥션 수가 짧은 순간(수십 초) 튀었다 가라앉는 패턴은 그래프에서 뭉개져 안 보여요. 15초 간격의 강화 모니터링(Enhanced Monitoring)을 쓰면 OS 레벨 지표까지 더 세밀하게 잡혀서, 실제로 저희가 겪었던 DB 커넥션 0건 장애(9/28 23:15) 같은 사고를 원인 분석할 때 정확한 타임라인을 재구성하는 데 이 세밀한 지표가 결정적인 근거가 됐어요.'},
+        {h:'기각한 대안 — Aurora MySQL', t:'Aurora는 스토리지 자동 확장, 더 빠른 페일오버, 읽기 복제본 확장이 쉬운 장점이 있어요. 하지만 일반 RDS MySQL보다 최소 비용이 더 높고, 이 프로젝트 규모에서는 그 확장성이 당장 필요하지 않아서, 비용 대비 합리적인 표준 RDS MySQL을 택했어요. 트래픽이 크게 늘어 읽기 부하 분산이나 스토리지 자동 확장이 중요해지면 Aurora 전환을 재검토할 지점이에요.'}
+      ], tags:['error+slowquery 로그 → CloudWatch','강화 모니터링 15초','접근은 WAS·Lambda의 3306만 허용'] },
+
+    secrets:{ kicker:'DATA / SECURITY', title:'Secrets Manager', config:'시크릿 assac/rds/petclinic, 하루 1회 자동 로테이션, 로테이션 Lambda는 db 서브넷에 위치', why:'코드나 Docker 이미지 어디에도 DB 비밀번호가 없어요. 앱이 aws-secretsmanager-jdbc 드라이버로 실행 시점에 Secrets Manager에서 직접 비밀번호를 가져와요.',
+      points:[
+        {h:'왜 환경변수나 pom.xml에 비밀번호를 그냥 안 넣었나', t:'환경변수나 빌드 설정에 평문으로 넣으면 Docker 이미지, Git 히스토리, docker inspect 결과 등 여러 곳에 비밀번호가 그대로 남아요. 실제로 이 프로젝트에서도 초기엔 평문 비밀번호가 systemd 환경변수에 노출된 적이 있었고, 이걸 근본적으로 없애기 위해 전환했어요.'},
+        {h:'왜 전용 JDBC 드라이버를 쓰나 (앱 코드에서 직접 API 호출 대신)', t:'앱 코드에서 매번 Secrets Manager API를 호출하도록 직접 구현하면, 캐싱·재시도·커넥션 갱신 로직을 전부 손으로 짜야 해요. aws-secretsmanager-jdbc 드라이버는 JDBC URL 프리픽스만 바꾸면 이 모든 걸 대신 처리해줘서, 애플리케이션 코드는 DB 자격증명을 신경 쓸 필요가 전혀 없어요.'},
+        {h:'왜 하루 1회 로테이션인가', t:'너무 자주 로테이션하면 로테이션 도중 짧은 접속 실패 가능성이 늘고 Lambda 실행 비용도 늘어요. 반대로 너무 뜸하면 비밀번호가 유출됐을 때 노출 시간이 길어져요. 하루 1회는 "노출되어도 최대 24시간 안에 무효화된다"는 보안 수준과 운영 부담 사이의 절충점이에요.'},
+        {h:'왜 single-user 로테이션 전략인가 (alternating 대신)', t:'AWS Secrets Manager의 MySQL 로테이션은 두 가지 전략이 있어요 — single-user는 계정 하나의 비밀번호를 그 자리에서 바꾸고, alternating은 두 개의 계정을 번갈아 활성화해서 로테이션 중에도 이전 자격증명이 잠깐 동시에 유효하게 유지돼요. single-user는 구현이 단순하지만 로테이션 순간에 극히 짧은 접속 실패 가능성이 있고, alternating은 무중단이 더 보장되지만 계정을 2개 관리해야 해서 복잡도가 늘어요. 지금은 단순성을 택했는데, 이게 바로 "약점"으로 스스로 인정한 부분이고, 무중단이 더 중요해지면 alternating으로 바꾸는 게 개선 방향이에요.'},
+        {h:'로테이션 Lambda가 왜 db 서브넷에 있나 (was나 public이 아니라)', t:'로테이션 Lambda는 RDS에 직접 접속해서 비밀번호를 바꾸는 작업을 해요. RDS가 db 서브넷에만 있고 그 서브넷 SG가 특정 소스만 3306을 허용하니까, Lambda도 같은 db 서브넷에 둬서 네트워크 경로가 가장 짧고 SG 규칙도 가장 좁게 유지할 수 있어요. was 서브넷에 뒀다면 db SG에 was 서브넷 전체 대역을 허용하는 식으로 규칙이 더 느슨해졌을 거예요.'}
+      ] },
+
+    nat:{ kicker:'NETWORK', title:'NAT 게이트웨이', config:'2a에 1개 + EIP (7일 송신량 0.34GB)', why:'WAS가 ECR 이미지를 pull하거나 CloudWatch로 로그를 보내는 등, 나가는 통신만 하도록 만든 통로예요.',
+      points:[
+        {h:'왜 WAS를 private 서브넷에 두고 NAT를 거치게 했나', t:'WAS에 공인 IP를 직접 주면 인터넷에서 WAS로 직접 접근을 시도할 수 있는 경로가 생겨요. private 서브넷 + NAT 구조는 "나가는 요청은 되지만 밖에서 들어오는 연결은 원천 차단"이라, 공격 표면을 줄이는 표준적인 방식이에요.'},
+        {h:'왜 1개만 두고 AZ마다 안 뒀나 (트레이드오프를 인지한 선택)', t:'AZ마다 NAT를 두면 가용성은 올라가지만 NAT Gateway 자체가 시간당 과금 + 데이터 처리량 과금이 있어서 비용이 거의 2배가 돼요. 실측한 7일 송신량이 0.34GB로 매우 적어서, 지금 트래픽 규모에서는 이중화의 이득보다 비용 절감이 크다고 판단했어요. 다만 2a NAT가 죽으면 2c WAS의 외부 통신(ECR pull, 로그 전송)이 끊기는 약점은 명확히 인지하고 있고, 트래픽이 늘면 AZ당 1개로 늘리는 걸 개선안으로 두고 있어요.'},
+        {h:'이 약점이 실제로 어떤 장애로 이어지나', t:'2a NAT가 죽으면 2c의 WAS는 인터넷으로 나가는 경로가 완전히 끊겨요. 구체적으로는 새 배포 시 ECR 이미지 pull이 실패해서 그 AZ만 배포가 멈추고, CloudWatch Agent의 로그 전송도 끊겨서 그 시점의 관측 가능성(observability)까지 함께 잃어요. 다만 이미 떠 있는 WAS가 처리 중인 사용자 요청 자체(ALB↔WAS↔RDS 경로)는 NAT와 무관해서 즉시 서비스 중단으로 이어지진 않는다는 점도 같이 알아둬야 해요 — 영향 범위를 정확히 아는 게 장애 대응 우선순위를 정하는 데 중요해요.'},
+        {h:'기각한 대안 — NAT Instance(EC2 기반)', t:'NAT Gateway 대신 저렴한 EC2에 NAT 역할을 시키는 NAT Instance 방식도 있어요. 초기 비용은 더 싸지만, 관리형이 아니라서 장애 시 직접 복구해야 하고 처리량 한계도 인스턴스 사양에 종속돼요. 관리 부담을 줄이는 게 우선이라 관리형인 NAT Gateway를 택했어요.'}
+      ] },
+
+    bastion:{ kicker:'NETWORK', title:'Bastion', config:'t3.micro, public-subnet-a, 키페어 인증', why:'WAS는 전부 private 서브넷에 있어서 외부에서 직접 SSH가 안 돼요. 관리 작업이 필요할 때만 이 서버를 거쳐 들어가는 용도예요.',
+      points:[
+        {h:'왜 t3.micro인가', t:'Bastion은 SSH 세션 하나 중계하는 용도라 CPU·메모리를 거의 안 써요. 가장 작은 상시 과금 인스턴스인 t3.micro로도 충분하고, 더 큰 인스턴스를 쓰는 건 예산 낭비예요.'},
+        {h:'왜 WAS에 직접 SSH 안 하고 Bastion을 거치나', t:'WAS 각각에 SSH 포트를 열어두면 관리 접근점이 인스턴스 수만큼 늘어나서 공격 표면이 커져요. Bastion 하나로 진입점을 모으면, 그 한 곳만 집중적으로 모니터링·통제하면 되고, WAS SG에는 "Bastion SG에서만 22 허용"이라는 좁은 규칙 하나만 있으면 돼요.'},
+        {h:'현재 약점과 왜 그렇게 됐는지', t:'지금 Bastion SG가 22·80 포트를 0.0.0.0/0(전체 인터넷)에 열어두고 있어요. 이건 실습 초기 단계에서 접근 편의를 위해 넓게 열어둔 상태가 그대로 남은 것으로 보이고, 프로덕션이라면 팀 고정 IP 대역으로 좁히거나, 아예 포트를 안 열고 AWS SSM Session Manager로 전환하는 게 맞아요(SSM은 IAM 권한만 있으면 포트를 열 필요가 없어요) — 다만 지금 SSM용 IAM 역할 권한이 아직 없어서 우선 SG 제한으로 완화하는 걸 권장해요.'}
+      ], tags:['⚠ 22·80 포트가 0.0.0.0/0에 열려있음 — 팀 IP 제한 또는 SSM 전환 검토 중'] },
+
+    igw:{ kicker:'NETWORK', title:'인터넷 게이트웨이', config:'VPC에 1개 attach', why:'public 서브넷(NAT, Bastion)이 인터넷과 통신하기 위한 관문이에요.',
+      points:[
+        {h:'왜 IGW가 public 서브넷에만 영향을 주나', t:'IGW 자체는 VPC 전체에 붙지만, 실제로 어느 서브넷이 인터넷에 나갈 수 있는지는 라우팅 테이블이 결정해요. public 라우팅 테이블만 "0.0.0.0/0 → IGW" 경로를 갖고 있고, was·db 라우팅 테이블엔 이 경로가 없어서, IGW가 있어도 private 서브넷은 여전히 인터넷과 직접 통신할 수 없어요.'}
+      ] },
+
+    vpce:{ kicker:'NETWORK / SECURITY', title:'VPC 엔드포인트 — Secrets Manager', config:'Interface 타입, db 서브넷 2곳에 위치, Private DNS 활성화', why:'db 서브넷엔 인터넷 경로가 아예 없는데, 로테이션 Lambda와 WAS가 Secrets Manager API는 호출해야 해서 만들었어요.',
+      points:[
+        {h:'NAT를 거쳐 인터넷으로 나가면 안 됐나', t:'기술적으로는 NAT를 거쳐 Secrets Manager의 퍼블릭 엔드포인트를 호출할 수도 있어요. 하지만 그러면 DB 비밀번호를 다루는 트래픽이 인터넷 구간을 지나가게 되고, was 서브넷의 NAT까지 라우팅이 필요해서 db 서브넷의 "인터넷 완전 차단" 원칙이 깨져요. Interface 엔드포인트는 AWS 내부망(PrivateLink)으로만 통신해서 이 원칙을 유지하면서도 API 호출을 가능하게 해요.'},
+        {h:'왜 Private DNS를 켰나', t:'꺼두면 코드에서 실제 AWS 엔드포인트 도메인 대신 VPC 엔드포인트 전용 도메인을 명시적으로 호출하도록 바꿔야 해요. Private DNS를 켜면 원래 쓰던 secretsmanager.ap-northeast-2.amazonaws.com 주소 그대로 호출해도, DNS가 자동으로 VPC 엔드포인트 IP로 응답해줘서 애플리케이션 코드를 전혀 안 바꿔도 돼요.'},
+        {h:'현재 약점', t:'엔드포인트 정책이 Principal *, Action *로 사실상 제한이 없어요. 이건 "VPC 안에서 이 엔드포인트에 닿을 수 있는 누구나, 무슨 Secrets Manager 액션이든" 허용한다는 뜻이라, 최소권한 원칙에는 어긋나요. 실제로 필요한 건 로테이션 Lambda와 WAS 역할의 GetSecretValue 정도라, 정책을 그 수준으로 좁히는 게 개선 과제예요.'},
+        {h:'왜 하필 db 서브넷 2곳에 엔드포인트를 뒀나', t:'로테이션 Lambda가 db 서브넷에 있어서 그 서브넷에서 Secrets Manager를 호출해야 하고, WAS도 이 엔드포인트를 호출해요. 엔드포인트를 was 서브넷에만 두면 db 서브넷의 Lambda가 못 쓰고, 반대도 마찬가지라, 두 계층 모두가 필요로 하는 지점에 걸쳐 있어야 해서 db 서브넷(두 AZ 모두)에 뒀고 SG로 was 서브넷의 접근도 함께 허용했어요.'},
+        {h:'이전에 실제로 겪었던 장애와의 연결', t:'이 VPC 엔드포인트로 가는 경로에 보안그룹 인바운드 규칙이 빠져있던 시기가 있었는데, 그때는 WAS가 Secrets Manager를 아예 호출할 수 없어 앱 기동 자체가 실패했어요. 지금은 SG가 고쳐져 있지만, 이 사례가 "엔드포인트를 만드는 것"과 "그 엔드포인트에 실제로 닿을 수 있게 SG를 여는 것"은 별개의 설정이라는 걸 보여준 실제 사고였어요.'}
+      ], tags:['⚠ 정책이 Principal *, Action * — 최소권한으로 조이는 게 권장됨'] },
+
+    route_table:{ kicker:'NETWORK', title:'라우팅 테이블 (3개)', config:'public → IGW / was → NAT / db → 경로 없음', why:'이 구조가 3-tier 보안의 핵심이에요. db 서브넷은 인터넷으로 나가는 경로 자체가 없어서, DB가 뚫려도 밖으로 데이터를 빼낼 방법이 없어요.',
+      points:[
+        {h:'왜 서브넷마다 라우팅 테이블을 다르게 뒀나 (VPC 전체에 하나면 안 됐나)', t:'라우팅 테이블 하나를 VPC 전체가 공유하면, 모든 서브넷이 같은 인터넷 접근 권한을 가져요. 계층마다 필요한 접근 범위가 다른데(public은 양방향, was는 나가기만, db는 아예 없음) 이걸 서브넷 단위로 분리해야 "이 계층은 이 정도까지만 나갈 수 있다"를 라우팅 레벨에서 강제할 수 있어요. 보안 그룹이 뚫려도 라우팅 자체가 없으면 통신이 물리적으로 불가능해요 — 이게 방어 계층을 이중으로 쌓는(defense in depth) 방식이에요.'},
+        {h:'왜 was는 IGW가 아니라 NAT로 나가나', t:'IGW로 직접 나가면 WAS가 공인 IP를 받아야 해서 인터넷에서 WAS로 들어오는 경로도 함께 열려요. NAT는 나가는 연결만 허용하고 들어오는 연결은 자동으로 막아서, "필요한 아웃바운드는 되지만 인바운드는 안 되는" 것을 정확히 구현해요.'}
+      ] },
+
+    s3:{ kicker:'STORAGE', title:'S3 (4개 버킷)', config:'ALB 액세스 로그(14일), CloudTrail 로그, 정적 자산(미연결), 백업 — 전부 버전 관리+암호화+퍼블릭 차단', why:'로그·백업을 저렴하고 내구성 높은 저장소에 분리해서 보관해요.',
+      points:[
+        {h:'왜 로그를 EC2 디스크가 아니라 S3에 두나', t:'EC2 로컬 디스크는 인스턴스가 ASG로 교체되는 순간 사라져요. S3는 인스턴스 수명과 무관하게 독립적으로 존재하고, 99.999999999%(9가 11개)의 내구성을 제공해서 장애조사나 감사에 필요한 로그를 안전하게 오래 보관할 수 있어요.'},
+        {h:'왜 버킷을 용도별로 나눴나 (하나로 합치지 않고)', t:'용도별로 나누면 버킷마다 보관 기간·접근 권한을 다르게 줄 수 있어요. 예를 들어 ALB 로그는 14일이면 충분하지만 CloudTrail은 감사 목적으로 더 길게, 백업은 별도 암호화 키로 관리하는 식으로요. 하나로 합치면 이런 세밀한 정책 차등을 주기 어려워요.'},
+        {h:'왜 버전 관리 + 퍼블릭 차단을 전 버킷에 걸었나', t:'버전 관리는 실수로 파일을 덮어쓰거나 삭제해도 이전 버전으로 복구할 수 있게 해주는 안전장치예요. 퍼블릭 차단은 S3 설정 실수로 로그나 백업이 인터넷에 그대로 노출되는 사고(실제로 많은 기업에서 발생한 사고 유형)를 계정 레벨에서 원천 차단해요.'},
+        {h:'assac-static 버킷이 왜 미사용 상태인가', t:'파일(CSS/폰트/이미지)이 업로드는 돼 있지만 CloudFront Origin이나 ALB 어디에도 연결 설정이 없어요. 정적 자산을 S3+CDN으로 분리 서빙하려고 시도했다가, 실제로는 Docker 이미지 안에 정적 파일을 내장하는 방식으로 최종 결정된 것으로 보이는 실습 잔재예요.'},
+        {h:'ALB 로그를 14일만 보관하는 이유와 트레이드오프', t:'ALB 액세스 로그는 요청 하나하나가 다 기록돼서 트래픽이 늘수록 용량이 빠르게 커져요. 14일은 "최근 장애를 조사하기엔 충분하지만, 장기 트렌드 분석엔 짧은" 기간이에요. 라이프사이클 정책으로 일정 기간 뒤 Glacier로 옮기거나 삭제하는 대신 아예 짧은 보관 기간으로 끝내는 방식을 택한 건데, 장기 트래픽 패턴 분석이 필요해지면 별도 보관 정책을 다시 설계해야 해요.'}
+      ] },
+
+    cloudwatch:{ kicker:'OPS', title:'CloudWatch', config:'ALB 5xx ≥5/분, ASG CPU ≥80%, RDS CPU ≥90% 알람 → SNS → Lambda → Discord', why:'장애가 나면 사람이 콘솔을 열어보기 전에 자동으로 감지해서 알려주는 체계예요.',
+      points:[
+        {h:'왜 세 가지 알람을 각 계층마다 하나씩 뒀나', t:'ALB 5xx는 "사용자가 실제로 에러를 보고 있다"는 최종 결과 지표고, ASG CPU와 RDS CPU는 그 원인이 될 수 있는 앞단 지표예요. 계층별로 알람을 나눠두면 "지금 문제가 WAS 과부하 때문인지 DB 과부하 때문인지"를 알람 발생 시점에 바로 구분할 수 있어요.'},
+        {h:'왜 5xx는 5/분인데 CPU는 80·90%로 다른가', t:'5xx는 단 한 건이라도 사용자 경험에 직접 영향을 주는 지표라 낮은 절대치(5건)로 민감하게 잡았어요. CPU는 순간적으로 튀었다가 내려가는 게 정상적인 부하 패턴이라, 너무 낮게 잡으면 알람이 계속 울려서 무시하게 되는 "알람 피로"가 생겨요. 그래서 지속적인 고부하를 가리키는 80·90% 수준으로 잡았어요.'},
+        {h:'왜 로그 보관을 30일로 통일했나', t:'CloudWatch Logs는 저장 기간에 비례해서 과금돼요. 장애조사는 보통 최근 며칠~몇 주 내 이슈를 보는 경우가 대부분이라, 30일이면 실무적으로 충분하면서 무기한 보관 대비 비용을 크게 아낄 수 있어요.'},
+        {h:'알람이 SNS를 한 번 거치는 이유(직접 Lambda를 구독하지 않고)', t:'CloudWatch 알람은 SNS 주제를 액션 대상으로 지정하는 구조라, 알람이 Lambda를 직접 아는 게 아니라 SNS라는 매개체만 알아요. 그래서 나중에 Slack이나 PagerDuty 같은 다른 채널을 추가하고 싶으면 SNS에 구독자를 하나 더 붙이면 되고, 알람 설정 자체는 건드릴 필요가 없어요 — ASG 알림과 동일한 팬아웃 설계 원칙이에요.'}
+      ] },
+
+    guardduty:{ kicker:'SECURITY', title:'GuardDuty', config:'CloudTrail, DNS, VPC Flow Logs, S3 데이터 이벤트, EBS 악성코드, RDS 로그인 이상 징후, Lambda 네트워크까지 전부 활성화', why:'침해 지표를 자동으로 탐지하는 위협 탐지 서비스예요.',
+      points:[
+        {h:'왜 WAF만으로는 부족한가', t:'WAF는 "요청 하나하나가 알려진 공격 패턴에 맞는지"를 실시간으로 걸러내는 앞단 방어예요. 반면 GuardDuty는 이미 시스템 안으로 들어온 뒤의 이상행동(비정상 로그인, 알려진 악성 IP와의 통신, 비정상적인 API 호출 패턴)을 CloudTrail·DNS·Flow Log 등 여러 로그를 교차분석해서 탐지해요. 두 개는 방어선의 다른 단계를 담당해서 같이 써야 의미가 있어요.'},
+        {h:'왜 이렇게 많은 데이터 소스를 다 켰나', t:'각 소스가 잡아내는 위협 유형이 달라요 — DNS는 악성 도메인 통신, VPC Flow Logs는 비정상 네트워크 스캔, EBS 악성코드 스캔은 랜섬웨어류, RDS 로그인 이상 징후는 자격증명 탈취 후 DB 접근 시도예요. 하나라도 꺼두면 그 유형의 공격은 탐지 사각지대가 생겨서, 커버리지를 최대화하려고 전부 켰어요.'},
+        {h:'GuardDuty와 CloudTrail의 역할 차이', t:'CloudTrail은 "누가 무엇을 했는지" 사후에 조회 가능한 원시 로그를 남기는 기록계예요. GuardDuty는 그 로그(와 다른 신호들)를 AWS의 위협 인텔리전스와 머신러닝으로 실시간 분석해서 "이상하다"고 능동적으로 판단해 알려주는 탐지 엔진이에요. CloudTrail 없이 GuardDuty는 분석할 원본 데이터가 없어 못 돌아가고, GuardDuty 없이 CloudTrail만 있으면 사고가 난 뒤에야 로그를 뒤져서 알게 돼요 — 사전 탐지와 사후 조사, 두 역할이 상호보완적이에요.'}
+      ] },
+
+    iam:{ kicker:'SECURITY', title:'IAM', config:'담당 영역별 그룹(network/db-security/edge-security/ops), 영역 밖 서비스는 Deny, MFA 필수', why:'한 사람이 전체 권한을 갖지 않도록 직무를 분리했어요.',
+      points:[
+        {h:'왜 Admin 권한을 몰아주지 않고 영역별로 쪼갰나', t:'한 계정이 뚫리면 그 계정이 가진 권한만큼 피해가 나요. 전원이 Admin이면 계정 하나만 유출돼도 전체 인프라가 위험해지지만, 영역별로 쪼개면 DB 담당자 계정이 유출돼도 네트워크나 엣지 설정은 안전해요. 이게 최소권한 원칙(principle of least privilege)이에요.'},
+        {h:'왜 영역 밖 서비스는 명시적으로 Deny하나', t:'Allow만 세밀하게 주고 나머지를 기본값(암묵적 Deny)에 맡기면, 나중에 실수로 광범위한 Allow 정책이 붙었을 때 의도치 않게 권한이 뚫릴 수 있어요. 명시적 Deny는 다른 어떤 Allow보다 우선 적용돼서, "이 영역 밖은 절대 안 된다"를 확실하게 못박는 안전장치예요.'},
+        {h:'왜 Terraform apply를 한 명만 하게 했나', t:'여러 명이 동시에 apply하면 state 충돌이나, 의도치 않은 변경이 겹쳐서 인프라가 예상과 다르게 바뀔 위험이 있어요. plan(조회)까지는 팀원 전원이 확인할 수 있게 열어두되, 실제 반영은 한 명이 책임지고 실행해서 변경 이력을 추적하기 쉽게 했어요.'},
+        {h:'왜 MFA를 필수로 했나', t:'비밀번호만으로는 피싱이나 유출로 뚫릴 가능성이 있어요. MFA(추가 인증 수단)를 강제하면 비밀번호가 유출돼도 공격자가 실제 로그인까지는 하기 어려워져서, 계정 탈취의 마지막 방어선 역할을 해요.'}
+      ] },
+
+    grafana:{ kicker:'OPS', title:'AMP + Managed Grafana', config:'Node Exporter, /actuator/prometheus 지표를 Prometheus(AMP)에 저장, IAM Identity Center 로그인으로 대시보드 시각화', why:'인프라·앱 지표를 한 곳에서 팀 전체가 볼 수 있는 대시보드를 만들기 위해서예요.',
+      points:[
+        {h:'왜 CloudWatch만으로는 부족했나', t:'CloudWatch는 AWS 리소스(EC2, RDS 등)의 인프라 지표는 잘 보여주지만, 애플리케이션 내부 지표(JVM 힙 사용량, HTTP 요청 응답시간 분포 등)를 세밀하게 시각화하기엔 대시보드 커스터마이징이 제한적이에요. Prometheus + Grafana 조합은 애플리케이션 레벨 지표를 세밀하게 수집·시각화하는 데 특화돼있어서, 인프라는 CloudWatch로, 앱 내부는 Prometheus/Grafana로 역할을 나눴어요.'},
+        {h:'왜 직접 운영하는 Prometheus 서버 대신 AMP(관리형)를 썼나', t:'Prometheus를 직접 EC2에 설치·운영하면 그 서버 자체의 가용성·백업·확장을 팀이 또 관리해야 해요. AMP(Amazon Managed Prometheus)는 이걸 관리형으로 제공해서, 팀은 지표 수집·시각화 로직에만 집중할 수 있어요.'},
+        {h:'왜 IAM Identity Center로 로그인하게 했나', t:'Grafana 대시보드에 별도 계정·비밀번호 체계를 또 만들면 관리 포인트가 늘어나요. 이미 AWS 계정 접근에 쓰는 IAM Identity Center로 통합하면, 인증 수단이 하나로 합쳐져서 관리가 단순해지고 퇴사·역할 변경 시 한 곳에서만 접근을 끊으면 돼요.'}
+      ] },
+
+    cicd:{ kicker:'CI/CD', title:'GitHub Actions', config:'main push → Docker 멀티스테이지 빌드 → ECR push(커밋 해시+latest) → ASG Instance Refresh(최소 50% 유지)', why:'사람이 수동으로 빌드하고 서버에 접속해 배포하는 과정을 없애서, 배포를 빠르고 반복 가능하고 실수 없는 절차로 만들기 위해서예요.',
+      points:[
+        {h:'왜 배포를 자동화했나', t:'수동 배포는 "빌드 → SCP로 파일 전송 → SSH 접속 → 서비스 재시작" 같은 단계를 사람이 순서대로 해야 해서, 한 단계라도 빼먹으면 장애로 이어져요. CI/CD는 이 순서를 코드로 고정해서, 매번 똑같은 절차로 배포되는 걸 보장해요.'},
+        {h:'왜 GitHub Actions인가', t:'코드가 이미 GitHub에 있어서 저장소 이벤트(push)에 바로 반응할 수 있고, 별도 CI 서버(Jenkins 등)를 운영·패치할 필요가 없어요. AWS 자격증명도 GitHub Secrets로 저장소 단위로 격리할 수 있어요.'},
+        {h:'왜 커밋 해시 + latest 두 태그를 쓰나', t:'latest는 "지금 배포된 버전"을 항상 가리키게 해서 배포 자동화에 쓰고, 커밋 해시 태그는 특정 시점의 이미지를 영구히 보존해서 "정확히 이 커밋으로 롤백"이 가능하게 해요. latest만 쓰면 이전 버전 이미지가 덮어써져 사라져요.'},
+        {h:'왜 한 번에 전부 교체하지 않고 Instance Refresh(최소 50% 유지)인가', t:'전체를 한 번에 내렸다 올리면 그 순간 서비스가 완전히 끊겨요. 최소 50%를 유지하면서 한 대씩 순차적으로 교체하면, 배포 중에도 항상 최소 1대는 요청을 받을 수 있어서 무중단 배포가 돼요. 새 인스턴스가 ELB 헬스체크를 통과한 뒤에만 다음 인스턴스로 넘어가서, 잘못된 배포가 전체로 퍼지기 전에 자동으로 멈춰요.'},
+        {h:'왜 CI 권한을 최소화했나', t:'CI 자격증명은 GitHub Secrets에 저장돼서 저장소 접근 권한이 있는 사람 누구나 실행할 수 있는 파이프라인이에요. 만약 유출되면 피해 범위가 커지니까, ECR push와 Instance Refresh 트리거 두 가지 액션 외에는 아무것도 못 하게 IAM을 좁혀뒀어요.'},
+        {h:'남은 개선점 — 정적 액세스 키를 아직 쓰고 있음', t:'현재 CI 자격증명이 GitHub Secrets에 저장된 정적 Access Key/Secret Key예요. 이 키는 만료가 없어서, 유출되면 회수(rotate)하기 전까지 계속 유효해요. GitHub Actions는 OIDC(OpenID Connect)로 AWS와 신뢰 관계를 맺어서 매 실행마다 단기 토큰을 발급받는 방식을 지원하는데, 이러면 정적 키 자체가 존재하지 않아 유출 위험이 사라져요. assac-role-github-actions라는 역할이 이미 만들어져 있어서, OIDC 연동 설정만 마치면 전환할 수 있어요 — 지금은 실제로 이 OIDC 경로로 쓰이고 있는지 확인이 필요한 상태예요.'},
+        {h:'기각한 대안 — Blue/Green 배포', t:'완전히 새 인스턴스 세트를 통째로 띄우고 트래픽을 한 번에 전환하는 Blue/Green은 롤백이 더 빠르다는 장점이 있어요. 하지만 한순간에 인스턴스가 2배로 필요해서 비용이 더 들고, 이 프로젝트 규모(WAS 2~6대)에서는 그 이점보다 인프라 복잡도 증가가 더 커서, 더 단순한 롤링(Instance Refresh) 방식을 택했어요.'}
+      ] },
+
+    terraform:{ kicker:'IAC', title:'Terraform', config:'콘솔로 만든 리소스를 모듈 5개(network/security-group/compute/rds/edge)로 import, state는 S3(버전관리+암호화+자체 잠금)', why:'수동으로 구성했던 인프라를 코드로 옮겨서, 다음에 누가 봐도 똑같이 재현하고 리뷰할 수 있게 하려고요.',
+      points:[
+        {h:'왜 콘솔로 이미 만든 걸 다시 만들지 않고 import 하나', t:'이미 실제 서비스가 돌아가고 있는 상태예요. 코드를 쓰고 그냥 apply하면 Terraform이 "이 리소스를 모른다"고 판단해서 새로 만들려다 충돌·중단 사고가 날 수 있어요. import는 기존 리소스를 그대로 둔 채 "이제부터 Terraform이 이걸 관리한다"고 등록만 하는 방식이라, 서비스 중단 없이 안전하게 코드화할 수 있어요.'},
+        {h:'왜 모듈을 5개로 나눴나 (하나의 큰 파일 대신)', t:'담당자가 여러 명이라, 하나의 거대한 파일을 같이 수정하면 Git 충돌이 잦아지고 리뷰도 어려워져요. 계층별(network/security-group/compute/rds/edge)로 나누면 각자 자기 모듈만 신경 쓰면 되고, 의존성 방향(network → security-group → compute/rds → edge)도 명확해져서 어떤 순서로 작업해야 하는지 코드 구조 자체가 알려줘요.'},
+        {h:'왜 state를 S3에 두나 (로컬 파일 대신)', t:'로컬에 state 파일을 두면 팀원마다 다른 state를 보게 되고, 누군가 apply하면 다른 사람의 state는 바로 구버전이 돼요. S3에 공유 state를 두면 전원이 항상 같은 최신 상태를 기준으로 plan을 돌릴 수 있고, 버전 관리를 켜두면 실수로 state가 깨져도 이전 버전으로 복구할 수 있어요. 자체 잠금(lockfile)은 두 명이 동시에 apply해서 state가 꼬이는 사고를 막아줘요.'},
+        {h:'왜 PR 리뷰 → plan 확인 → apply 순서를 강제하나', t:'인프라 변경은 코드 버그와 달리 되돌리기 어렵거나 서비스에 즉각 영향을 줄 수 있어요. PR 리뷰로 다른 사람이 먼저 변경 내용을 확인하고, plan으로 "실제로 뭐가 바뀔지" 미리 보고 나서야 apply하게 만들면, 의도치 않은 변경이 프로덕션에 그대로 적용되는 사고를 사전에 막을 수 있어요.'},
+        {h:'왜 prevent_destroy를 핵심 리소스에 걸었나', t:'보안 그룹처럼 다른 리소스가 참조하고 있는 자원을 실수로 삭제하면 연쇄적으로 서비스 장애가 나요. prevent_destroy는 "이 리소스는 의도적으로 코드에서 제거해도 Terraform이 삭제를 거부한다"는 안전핀이라, 오탈자나 실수로 인한 삭제 명령이 실제로 실행되는 걸 막아줘요.'}
+      ], tags:['보안 그룹 등 핵심 리소스는 prevent_destroy로 삭제 방지'] }
+  };
+
+  function node(id, opts){
+    opts = opts || {};
+    var d = DATA[id];
+    var cls = 'node' + (opts.small ? ' small' : '') + (opts.cls ? ' '+opts.cls : '');
+    var kicker = d.kicker;
+    return '<button type="button" class="'+cls+'" data-id="'+id+'">' +
+      '<span class="k">'+kicker+'</span>' +
+      '<span class="t">'+d.title+'</span>' +
+      (opts.tag ? '<span class="d">'+opts.tag+'</span>' : '') +
+      '</button>';
+  }
+  function arrow(label){
+    return '<span class="arrow">'+(label||'→')+'</span>';
+  }
+
+  document.getElementById('flow-entry').innerHTML =
+    node('user',{small:true}) + arrow() +
+    node('route53',{small:true,tag:'assac.cloud'}) + arrow() +
+    node('cloudfront') + arrow() +
+    node('waf');
+
+  document.getElementById('flow-igw').innerHTML =
+    node('igw',{small:true}) + arrow('↕') + node('alb') ;
+
+  document.getElementById('az-a-public').innerHTML = node('nat',{small:true}) + node('bastion',{small:true});
+  document.getElementById('az-a-was').innerHTML = node('was',{tag:'WAS01 · PetClinic'}) + node('docker',{small:true}) + node('asg_alert',{small:true});
+  document.getElementById('az-a-db').innerHTML = node('rds',{tag:'주 AZ'}) + node('secrets',{small:true});
+
+  document.getElementById('az-c-public').innerHTML = '<button type="button" class="node small" disabled style="opacity:.45;cursor:default"><span class="k">PUBLIC</span><span class="t">— (2a 공용)</span></button>';
+  document.getElementById('az-c-was').innerHTML = node('was',{tag:'WAS02'});
+  document.getElementById('az-c-db').innerHTML = node('rds',{tag:'대기 AZ'});
+
+  document.getElementById('panel-monitor').innerHTML = node('cloudwatch',{small:true}) + node('grafana',{small:true});
+  document.getElementById('panel-audit').innerHTML = node('guardduty',{small:true}) + node('iam',{small:true}) + node('s3',{small:true});
+  document.getElementById('panel-cicd').innerHTML = node('cicd',{small:true}) + node('terraform',{small:true});
+
+  // extra route-table node inline into the VPC label area (appended after az-row via JS not needed; add as separate node accessible from footer link)
+  // add a small route-table + vpce chips row under the az-row for discoverability
+  var vpcEl = document.querySelector('.vpc');
+  var extraRow = document.createElement('div');
+  extraRow.className = 'flow-row';
+  extraRow.style.marginTop = '14px';
+  extraRow.innerHTML = node('route_table',{small:true}) + node('vpce',{small:true});
+  vpcEl.appendChild(extraRow);
+
+  // ---- drawer logic ----
+  var scrim = document.getElementById('scrim');
+  var drawer = document.getElementById('drawer');
+  var closeBtn = document.getElementById('drawer-close');
+  var titleEl = document.getElementById('drawer-title');
+  var kickerEl = document.getElementById('drawer-kicker');
+  var bodyEl = document.getElementById('drawer-body');
+  var activeBtn = null;
+
+  function openDrawer(id, btn){
+    var d = DATA[id];
+    if(!d) return;
+    if(activeBtn) activeBtn.classList.remove('active');
+    activeBtn = btn;
+    if(btn) btn.classList.add('active');
+
+    kickerEl.textContent = d.kicker;
+    titleEl.textContent = d.title;
+
+    var html = '';
+    html += '<div class="field"><p class="field-label">실제 설정</p><p class="field-value mono">'+escapeHtml(d.config)+'</p></div>';
+    html += '<div class="field"><p class="field-label">왜 이렇게 했나</p><p class="field-value">'+escapeHtml(d.why)+'</p></div>';
+    if(d.extra){
+      html += '<div class="field"><p class="field-value">'+escapeHtml(d.extra)+'</p></div>';
+    }
+    if(d.points && d.points.length){
+      html += '<div class="field"><p class="field-label">항목별 근거</p><div class="point-list">';
+      d.points.forEach(function(p){
+        html += '<div class="point"><p class="point-h">'+escapeHtml(p.h)+'</p><p class="point-t">'+escapeHtml(p.t)+'</p></div>';
+      });
+      html += '</div></div>';
+    }
+    if(d.tags && d.tags.length){
+      html += '<div class="field"><p class="field-label">세부 규칙 / 참고</p><div class="tag-row">';
+      d.tags.forEach(function(t){
+        var warn = t.indexOf('⚠') === 0;
+        html += '<span class="tag'+(warn?' warn':'')+'">'+escapeHtml(t)+'</span>';
+      });
+      html += '</div></div>';
+    }
+    bodyEl.innerHTML = html;
+
+    scrim.classList.add('open');
+    drawer.classList.add('open');
+  }
+
+  function closeDrawer(){
+    scrim.classList.remove('open');
+    drawer.classList.remove('open');
+    if(activeBtn) activeBtn.classList.remove('active');
+    activeBtn = null;
+  }
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+
+  document.addEventListener('click', function(e){
+    var btn = e.target.closest('button[data-id]');
+    if(btn){
+      openDrawer(btn.getAttribute('data-id'), btn);
+      return;
+    }
+  });
+
+  closeBtn.addEventListener('click', closeDrawer);
+  scrim.addEventListener('click', closeDrawer);
+  document.addEventListener('keydown', function(e){
+    if(e.key === 'Escape') closeDrawer();
+  });
+
+})();
+</script>
