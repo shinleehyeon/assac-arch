@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>스트림 중복 제거 파이프라인 지도</title>
+<style>
+:root{
+  --ink:#16191f;
+  --muted:#545b64;
+  --line:#5f6b7a;
+  --purple:#8c4fff;
+  --bg:#ffffff;
+  --surface:#ffffff;
+  --surface-2:#f4f6f8;
+  --border:#d5dbe1;
+  --accent:#0073bb;
+  --danger:#d13212;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+body{margin:0;background:#fff;color:var(--ink);font-family:"Helvetica Neue",Arial,"Apple SD Gothic Neo","Noto Sans KR",sans-serif}
+.wrap{max-width:1440px;margin:0 auto;padding:16px 16px 40px}
+header.page{margin:0 0 12px}
+.eyebrow{margin:0;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+h1{margin:2px 0 0;font-size:18px;font-weight:700;letter-spacing:-.01em}
+.lead{margin:3px 0 0;color:var(--muted);font-size:13px}
+
+.board{display:grid;grid-template-columns:minmax(0,1fr) 148px;gap:10px;align-items:start}
+.topflow{grid-column:1}
+.aws{grid-column:1}
+.ext{grid-column:2;grid-row:1 / span 2;border:1.5px solid #232f3e;border-radius:8px;padding:8px 6px 12px;background:#fff}
+.ext h3{margin:0 0 10px;text-align:center;font-size:12px}
+.ext .svc{width:100%;margin-bottom:10px}
+.wire{font-size:10px;color:var(--muted);text-align:center;margin:-4px 0 8px}
+
+.flow{display:flex;align-items:flex-start;justify-content:center}
+.svc{display:flex;flex-direction:column;align-items:center;gap:3px;width:92px;padding:0;border:0;background:transparent;color:inherit;font:inherit;cursor:pointer}
+.lbl{font-size:11px;line-height:1.25;text-align:center;color:#232f3e}
+.lbl small{display:block;color:var(--muted);font-size:10px;font-weight:400}
+.ico{width:40px;height:40px;display:block;object-fit:contain}
+.tile{width:40px;height:40px;border-radius:8px;display:grid;place-items:center;flex:none}
+.tile b{color:#fff;font-size:10px;font-weight:700;letter-spacing:.02em;line-height:1}
+.tile img{width:24px;height:24px;display:block}
+.tile.ink{background:#232f3e}
+.tile.purple{background:#8C4FFF}
+.tile.pink{background:#E7157B}
+.tile.py{background:#3b6ea5}
+.tile.local{background:#6b7785}
+.tile.num{background:#fff;border:1.5px solid #8C4FFF}
+.tile.num b{color:#5c35c4;font-size:11px}
+button.svc:hover .ico,button.svc:hover .tile{transform:translateY(-1px)}
+button.svc:focus-visible{outline:2px solid #0073bb;outline-offset:2px;border-radius:8px}
+button.svc.active .ico,button.svc.active .tile{outline:2px solid #0073bb;outline-offset:2px}
+
+.arr{flex:none;width:16px;height:0;border-top:1.5px solid var(--line);margin-top:18px;position:relative}
+.arr::after{content:"";position:absolute;right:-1px;top:-4px;border:4px solid transparent;border-left:5px solid var(--line)}
+.arr.dot{border-top-style:dashed;width:22px}
+
+.pill{border:1px solid var(--purple);color:#5c35c4;font-size:10px;line-height:1.35;text-align:center;border-radius:3px;padding:3px 8px;background:#fff}
+button.pill{cursor:pointer;font:inherit;font-size:10px}
+button.pill:hover{background:#f6f1ff}
+.drop{display:flex;flex-direction:column;align-items:center;color:var(--muted);font-size:10px;line-height:1.35;text-align:center;margin-top:6px}
+.drop i{display:block;width:0;height:28px;border-left:1.5px dashed var(--line);position:relative;margin-top:3px}
+.drop i::after{content:"";position:absolute;left:-4px;bottom:-1px;border:4px solid transparent;border-top:6px solid var(--line)}
+
+.aws{border:1.5px solid #232f3e;border-radius:8px;padding:10px 12px 12px;background:#fff;display:grid;grid-template-columns:minmax(0,1fr) 250px;gap:10px;align-items:start}
+.aws-cap{display:flex;align-items:center;gap:6px;font-weight:700;font-size:13px;margin:0 0 8px;grid-column:1 / -1}
+.aws-cap img{width:22px;height:16px;object-fit:contain}
+.reg{margin-left:8px;font-weight:500;color:var(--muted);font-size:11px}
+
+.stack{display:flex;flex-direction:column;gap:10px}
+.stage{border:1.5px dashed #b48ae8;border-radius:6px;padding:8px 10px 10px;background:#fff}
+.stage.ctl{border-color:#e58aae}
+.stage.qry{border-color:#8fb3d9}
+.stage-cap{margin:0 0 8px;font-size:12px;font-weight:700;color:#3b3f8f}
+.stage.ctl .stage-cap{color:#b0125e}
+.stage.qry .stage-cap{color:#0b5a99}
+.stage-cap small{font-weight:500;color:var(--muted);margin-left:6px;font-size:10px}
+.tables{display:flex;gap:8px;justify-content:center;margin-top:8px;flex-wrap:wrap}
+
+.vpc{border:1.5px solid #248814;border-radius:4px;padding:8px 8px 10px}
+.vpc-cap{color:#1d8102;font-size:12px;font-weight:700;display:flex;gap:4px;align-items:center;margin:0 0 6px}
+.vpc-cap img{width:18px;height:18px}
+.azgrid{display:grid;grid-template-columns:1fr 112px 1fr;gap:6px 8px;align-items:stretch}
+.sub{border-radius:3px;min-height:92px;padding:18px 4px 6px;position:relative;display:flex;align-items:center;justify-content:center}
+.subcap{position:absolute;top:3px;left:6px;font-size:10px;line-height:1.2}
+.raw{background:#f3faf3;border:1.5px solid #8fce7a}
+.raw .subcap{color:#1d6b12}
+.clean{background:#f3fbfb;border:1.5px solid #7ec8c4}
+.clean .subcap{color:#0d6a70}
+.misc{background:#fafafa;border:1.5px dashed #b5bcc4}
+.misc .subcap{color:#545b64}
+.old{background:#fff6ec;border:1.5px dashed #f0b27a}
+.old .subcap{color:#c45500}
+.bridge{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:2px}
+.bridge .wire{margin:0}
+.sub .ico,.sub .tile{width:32px;height:32px}
+.sub .lbl{font-size:10px}
+.sub .svc{width:150px}
+
+.ops{display:flex;flex-direction:column;gap:8px}
+.panel{border:1.5px dashed #e3a45a;border-radius:6px;padding:6px 4px 8px;background:#fff}
+.panel h3{margin:0 0 6px;text-align:center;font-size:11px;font-weight:700}
+.igrid{display:grid;grid-template-columns:1fr 1fr;gap:6px 0;justify-items:center}
+.panel .svc{width:104px}
+.panel .ico,.panel .tile{width:28px;height:28px}
+.panel .tile b{font-size:9px}
+.panel .lbl{font-size:10px}
+
+footer.note{margin-top:18px;padding-top:12px;border-top:1px solid #e6eaed;color:var(--muted);font-size:12px;line-height:1.7}
+footer.note button{border:0;background:none;padding:0;color:#0073bb;font:inherit;cursor:pointer}
+footer.note button:hover{text-decoration:underline}
+
+.scrim{position:fixed;inset:0;background:rgba(22,25,31,.45);opacity:0;pointer-events:none;transition:opacity .18s ease;z-index:20}
+.scrim.open{opacity:1;pointer-events:auto}
+.drawer{position:fixed;right:0;top:0;bottom:0;width:min(440px,100%);background:#fff;border-left:1px solid var(--border);z-index:21;transform:translateX(100%);transition:transform .22s cubic-bezier(.2,.7,.3,1);display:flex;flex-direction:column}
+.drawer.open{transform:translateX(0)}
+@media (max-width:640px){
+  .drawer{right:0;left:0;top:auto;width:auto;max-height:82vh;border-left:none;border-top:1px solid var(--border);border-radius:16px 16px 0 0;transform:translateY(100%)}
+  .drawer.open{transform:translateY(0)}
+}
+.drawer-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:18px 18px 12px;border-bottom:1px solid var(--border)}
+.drawer-head .k{margin:0 0 4px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+.drawer-head h2{margin:0;font-size:18px}
+.close-btn{width:32px;height:32px;border-radius:8px;border:1px solid var(--border);background:var(--surface-2);color:var(--muted);font-size:16px;cursor:pointer}
+.drawer-body{padding:16px 18px 28px;overflow:auto}
+.field{margin-bottom:18px}
+.field-label{margin:0 0 6px;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.field-value{margin:0;font-size:14px;line-height:1.7}
+.field-value.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;background:#f4f6f8;border:1px solid var(--border);border-radius:8px;padding:10px 12px;white-space:pre-wrap;word-break:break-word}
+.point-list{display:flex;flex-direction:column;gap:12px}
+.point{border-left:2px solid var(--accent);padding-left:12px}
+.point-h{margin:0 0 3px;font-size:13px;font-weight:650}
+.point-t{margin:0;font-size:13px;line-height:1.65;color:#3d4a57}
+.tag-row{display:flex;gap:6px;flex-wrap:wrap}
+.tag{font-size:11px;border:1px solid var(--border);color:var(--muted);padding:3px 8px;border-radius:100px}
+.tag.warn{border-color:#e6c27a;color:#8a5a00}
+.empty-state{display:flex;flex-direction:column;align-items:center;text-align:center;padding:36px 16px;color:var(--muted);gap:8px}
+.empty-state p{margin:0;font-size:13px;line-height:1.6;max-width:28ch}
+@media (max-width:1100px){
+  .board,.aws{grid-template-columns:1fr}
+  .ext{grid-column:1;grid-row:auto}
+  .flow{justify-content:flex-start;overflow-x:auto;padding-bottom:4px}
+}
+
+/* 데이터 파이프라인 배치: 왼쪽에서 오른쪽으로 흐르는 레인 */
+.pipe{display:grid;grid-template-columns:136px 24px minmax(0,1fr);gap:0;align-items:stretch}
+.harr-in{grid-column:2;grid-row:1}
+.bottom .panel:first-child .igrid{grid-template-columns:1fr 1fr}
+.srcs{border:1.5px solid #232f3e;border-radius:8px;padding:8px 6px 12px;background:#fff;display:flex;flex-direction:column;align-items:center;gap:4px}
+.srcs h3{margin:0 0 6px;font-size:11px;letter-spacing:.08em}
+.srcs .wire{margin:2px 0 0}
+.vline{display:block;width:0;height:22px;border-left:1.5px solid var(--line);position:relative;margin:2px 0}
+.vline::after{content:"";position:absolute;left:-4px;bottom:-1px;border:4px solid transparent;border-top:6px solid var(--line)}
+.vline.dash{border-left-style:dashed}
+.aws{display:block}
+.pipe .srcs{grid-column:1;grid-row:1}
+.pipe .aws{grid-column:3;grid-row:1}
+.lanes{display:grid;grid-template-columns:minmax(0,1fr) 24px minmax(0,1fr) 24px minmax(0,1.05fr) 24px minmax(0,1fr) 24px minmax(0,1fr);align-items:stretch}
+.harr{align-self:center;height:0;border-top:1.5px solid var(--line);position:relative;margin:0 2px}
+.harr::after{content:"";position:absolute;right:-1px;top:-4px;border:4px solid transparent;border-left:5px solid var(--line)}
+.zone{border-radius:6px;padding:8px 6px 12px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:4px;min-height:330px}
+.zone .zone-cap + .svc{margin-top:auto}
+.zone > .svc:last-child{margin-bottom:auto}
+.zone > .tables{margin-bottom:auto}
+.zone-cap{align-self:stretch;margin:0 0 6px;font-size:11px;font-weight:700;letter-spacing:.06em;line-height:1.3}
+.zone-cap small{display:block;font-weight:500;letter-spacing:0;color:var(--muted);font-size:10px}
+.zone .svc{width:100%;max-width:180px}
+.zone.ing{border:1.5px dashed #b48ae8}
+.zone.ing .zone-cap{color:#3b3f8f}
+.zone.raw{background:#f3faf3;border:1.5px solid #8fce7a}
+.zone.raw .zone-cap{color:#1d6b12}
+.zone.proc{border:1.5px dashed #e58aae}
+.zone.proc .zone-cap{color:#b0125e}
+.zone.cln{background:#f3fbfb;border:1.5px solid #7ec8c4}
+.zone.cln .zone-cap{color:#0d6a70}
+.zone.srv{border:1.5px dashed #8fb3d9}
+.zone.srv .zone-cap{color:#0b5a99}
+.zone .aux{margin-top:auto;padding-top:8px;width:100%;display:flex;justify-content:center;border-top:1px dashed #b5bcc4}
+.zone .aux .ico{width:28px;height:28px}
+.zone .aux .lbl{font-size:10px}
+.zone .tables{flex-direction:column;align-items:stretch;margin-top:10px}
+.bottom{display:grid;grid-template-columns:1fr 1.2fr 1.2fr;gap:10px;margin-top:10px}
+.bottom .panel .svc{width:112px}
+.bottom .igrid{grid-template-columns:repeat(auto-fit,minmax(112px,1fr))}
+@media (max-width:1100px){
+  .pipe{grid-template-columns:1fr}
+  .lanes{grid-template-columns:1fr}
+  .harr{height:22px;width:0;border-top:0;border-left:1.5px solid var(--line);justify-self:center;margin:2px 0}
+  .harr::after{right:auto;left:-4px;top:auto;bottom:-1px;border:4px solid transparent;border-top:6px solid var(--line);border-left-color:transparent}
+  .zone{min-height:0}
+  .bottom{grid-template-columns:1fr}
+}
+
+/* v3: 번호가 붙은 6단계, 한국어 설명, 큰 글자 */
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center;font-size:12px;color:#3d4a57;margin:0 0 10px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.lg{display:inline-block;width:14px;height:14px;border-radius:3px}
+.lg.s3{background:#7AA116}
+.lg.svc2{background:#8C4FFF}
+.lg.auto{background:#E7157B}
+.lg.you{background:#232f3e}
+.lg-note{margin-left:auto;color:var(--muted)}
+.no{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;background:#232f3e;color:#fff;font-size:12px;font-weight:700;margin-right:6px;letter-spacing:0}
+.zone-cap{display:flex;align-items:center;font-size:14px;letter-spacing:0;margin:0}
+.srcs h3{display:flex;align-items:center;justify-content:center;font-size:14px;letter-spacing:0;margin:0}
+.zdesc{margin:2px 0 8px;font-size:12px;color:var(--muted);text-align:center;align-self:stretch}
+.srcs .zdesc{margin-bottom:10px}
+.svc{width:100%;max-width:190px}
+.lbl{font-size:13px;line-height:1.35;font-weight:600}
+.lbl small{font-size:12px;font-weight:400;margin-top:1px}
+.lbl .path{display:block;font-style:normal;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10.5px;color:#0d6a70;margin-top:3px;word-break:break-all;font-weight:400}
+.ico{width:48px;height:48px}
+.tile{width:48px;height:48px;border-radius:10px}
+.tile b{font-size:11px}
+.vline{height:26px}
+.zone{min-height:380px;padding:10px 8px 14px}
+.zone .zone-cap + .zdesc + .svc{margin-top:auto}
+.zone .zone-cap + .svc{margin-top:0}
+.zone .num{margin:8px 0 0;font-size:12px;color:#3d4a57}
+.zone .num b{font-size:22px;color:#16191f;margin-right:2px}
+.zone.raw .num b{color:#b45a00}
+.zone.cln .num b{color:#0d6a70}
+.zone .aux{margin-top:auto;padding-top:10px;border-top:1px dashed #b5bcc4}
+.zone .svc.aux .ico{width:30px;height:30px}
+.zone .svc.aux .lbl{font-size:12px}
+.zone .svc.aux .lbl small{font-size:11px}
+.tile.num2{background:#fff;border:1.5px solid #8C4FFF}
+.tile.num2 b{color:#5c35c4;font-size:12px}
+.tables{gap:8px}
+.pill{font-size:11.5px;line-height:1.45;padding:6px 8px;border-radius:5px}
+.pill br + *{}
+.aws-cap{font-size:14px}
+.panel h3{font-size:12.5px;margin-bottom:8px}
+.bottom .panel .svc{width:130px}
+.panel .lbl{font-size:12px}
+.panel .lbl small{font-size:11px}
+.panel .ico,.panel .tile{width:36px;height:36px}
+.bottom{grid-template-columns:1fr 1.15fr 1.15fr}
+@media (max-width:1100px){.lg-note{margin-left:0;flex-basis:100%}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="page">
+    <p class="eyebrow">sesac14 · stream lab · 2026-11-10</p>
+    <h1>스트림 중복 제거 파이프라인 지도</h1>
+    <p class="lead">이벤트를 보내면 → S3에 원본이 쌓이고 → 10분마다 중복을 지운 복사본을 만들고 → Athena로 확인해요.</p>
+  </header>
+
+  <div class="legend">
+    <span><i class="lg s3"></i>S3 저장소</span>
+    <span><i class="lg svc2"></i>데이터 서비스</span>
+    <span><i class="lg auto"></i>자동 실행 (시간·순서 제어)</span>
+    <span><i class="lg you"></i>직접 실행</span>
+    <span class="lg-note">번호 순서대로 읽으세요. 박스를 누르면 실제 설정이 나와요.</span>
+  </div>
+
+  <div class="pipe">
+    <aside class="srcs">
+      <h3><b class="no">1</b>이벤트 보내기</h3>
+      <p class="zdesc">내가 직접 실행</p>
+      <button type="button" class="svc" data-id="cloudshell"><span class="tile ink"><img src="icons/user.svg" alt=""></span><span class="lbl">CloudShell<small>명령을 실행하는 곳</small></span></button>
+      <i class="vline"></i>
+      <button type="button" class="svc" data-id="producer"><span class="tile py"><b>PY</b></span><span class="lbl">전송 스크립트<small>이벤트를 만들어 보냄</small></span></button>
+    </aside>
+    <span class="harr harr-in"></span>
+
+    <section class="aws">
+      <h2 class="aws-cap"><img src="icons/aws-cloud.svg" alt="">AWS Cloud <span class="reg">서울 리전</span></h2>
+
+      <div class="lanes">
+        <section class="zone ing">
+          <h3 class="zone-cap"><b class="no">2</b>받아서 모으기</h3>
+          <p class="zdesc">실시간으로 들어와요</p>
+          <button type="button" class="svc" data-id="kinesis"><span class="tile purple"><b>KDS</b></span><span class="lbl">Kinesis<small>이벤트가 들어오는 입구</small></span></button>
+          <i class="vline"></i>
+          <button type="button" class="svc" data-id="firehose"><span class="tile purple"><b>KDF</b></span><span class="lbl">Firehose<small>모아서 S3에 저장</small></span></button>
+        </section>
+        <span class="harr"></span>
+
+        <section class="zone raw">
+          <h3 class="zone-cap"><b class="no">3</b>원본 저장</h3>
+          <p class="zdesc">보낸 그대로 보관</p>
+          <button type="button" class="svc" data-id="s3_raw"><img class="ico" src="icons/s3.svg" alt=""><span class="lbl">S3 원본<small>중복이 섞여 있음</small><em class="path">stream/raw/</em></span></button>
+          <div class="num"><b>6,125</b>건</div>
+          <button type="button" class="svc aux" data-id="s3_misc"><img class="ico" src="icons/s3.svg" alt=""><span class="lbl">보조 폴더<small>스크립트 · 조회 결과</small></span></button>
+        </section>
+        <span class="harr"></span>
+
+        <section class="zone proc">
+          <h3 class="zone-cap"><b class="no">4</b>중복 제거</h3>
+          <p class="zdesc">10분마다 자동으로</p>
+          <button type="button" class="svc" data-id="scheduler"><span class="tile pink"><b>Sched</b></span><span class="lbl">Scheduler<small>10분마다 시작 신호</small></span></button>
+          <i class="vline"></i>
+          <button type="button" class="svc" data-id="sfn"><span class="tile pink"><b>SFN</b></span><span class="lbl">Step Functions<small>job 실행 · 완료까지 대기</small></span></button>
+          <i class="vline"></i>
+          <button type="button" class="svc" data-id="glue"><span class="tile purple"><b>Glue</b></span><span class="lbl">Glue job<small>같은 이벤트는 한 줄만 남김</small></span></button>
+        </section>
+        <span class="harr"></span>
+
+        <section class="zone cln">
+          <h3 class="zone-cap"><b class="no">5</b>정제본 저장</h3>
+          <p class="zdesc">중복을 뺀 복사본</p>
+          <button type="button" class="svc" data-id="s3_clean"><img class="ico" src="icons/s3.svg" alt=""><span class="lbl">S3 정제본<small>중복 없음</small><em class="path">stream/batch-clean/current/</em></span></button>
+          <div class="num"><b>6,020</b>건</div>
+          <button type="button" class="svc aux" data-id="s3_old"><img class="ico" src="icons/s3.svg" alt=""><span class="lbl">첫 번째 스크립트 결과<small>11:31에 한 번 실행</small></span></button>
+        </section>
+        <span class="harr"></span>
+
+        <section class="zone srv">
+          <h3 class="zone-cap"><b class="no">6</b>조회</h3>
+          <p class="zdesc">SQL로 확인</p>
+          <button type="button" class="svc" data-id="athena"><span class="tile purple"><b>Athena</b></span><span class="lbl">Athena<small>S3 파일을 SQL로 조회</small></span></button>
+          <div class="tables">
+            <button type="button" class="pill" data-id="tbl_raw">원본 테이블<br>stream_raw_events</button>
+            <button type="button" class="pill" data-id="tbl_clean">정제본 테이블<br>stream_batch_clean</button>
+          </div>
+        </section>
+      </div>
+
+      <div class="bottom">
+        <section class="panel">
+          <h3>권한 · 역할 4개</h3>
+          <div class="igrid">
+            <button type="button" class="svc" data-id="iam_firehose"><img class="ico" src="icons/iam.svg" alt=""><span class="lbl">Firehose용<small>내가 만든 역할</small></span></button>
+            <button type="button" class="svc" data-id="iam_glue"><img class="ico" src="icons/iam.svg" alt=""><span class="lbl">Glue용<small>새 버킷만 접근</small></span></button>
+            <button type="button" class="svc" data-id="iam_sfn"><img class="ico" src="icons/iam.svg" alt=""><span class="lbl">Step Functions용<small>job 2개만 실행</small></span></button>
+            <button type="button" class="svc" data-id="iam_sched"><img class="ico" src="icons/iam.svg" alt=""><span class="lbl">Scheduler용<small>상태 머신만 시작</small></span></button>
+          </div>
+        </section>
+        <section class="panel">
+          <h3>결과와 기록</h3>
+          <div class="igrid">
+            <button type="button" class="svc" data-id="result"><span class="tile num2"><b>-105</b></span><span class="lbl">결과 숫자<small>원본 6,125 → 정제본 6,020</small></span></button>
+            <button type="button" class="svc" data-id="troubles"><span class="tile num2"><b>7</b></span><span class="lbl">겪은 문제<small>원인과 해결 7가지</small></span></button>
+            <button type="button" class="svc" data-id="cloudwatch"><img class="ico" src="icons/cloudwatch.svg" alt=""><span class="lbl">CloudWatch<small>Glue 실행 로그</small></span></button>
+          </div>
+        </section>
+        <section class="panel">
+          <h3>참고 자료</h3>
+          <div class="igrid">
+            <button type="button" class="svc" data-id="instructor"><span class="tile local"><b>PY</b></span><span class="lbl">강사 스크립트<small>지금 쓰는 job</small></span></button>
+            <button type="button" class="svc" data-id="mine"><span class="tile local"><b>PY</b></span><span class="lbl">내가 만든 스크립트<small>첫 번째 job</small></span></button>
+            <button type="button" class="svc" data-id="leftover"><span class="tile local"><b>old</b></span><span class="lbl">옛 이름 자원<small>지울 목록</small></span></button>
+          </div>
+        </section>
+      </div>
+    </section>
+  </div>
+
+  <footer class="note">
+    아이콘은 조회용이에요. 설정값은 2026-11-10에 AWS CLI와 Athena로 읽은 값이고, 이유는 교안·코드와 이번 작업에서 확인한 내용이에요. 이름이 적힌 색 타일은 공식 아이콘 파일이 이 폴더에 없는 서비스예요.
+    <button type="button" data-id="result">결과 숫자</button> ·
+    <button type="button" data-id="troubles">겪은 문제 7가지</button> ·
+    <button type="button" data-id="leftover">남아 있는 옛 자원</button>
+  </footer>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<div class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="drawer-title">
+  <div class="drawer-head">
+    <div>
+      <p class="k" id="drawer-kicker">SELECT A NODE</p>
+      <h2 id="drawer-title">구성 요소를 선택하세요</h2>
+    </div>
+    <button class="close-btn" id="drawer-close" aria-label="닫기">✕</button>
+  </div>
+  <div class="drawer-body" id="drawer-body">
+    <div class="empty-state">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+      <p>다이어그램에서 아무 박스나 눌러보세요. 실제 설정값과 그렇게 만든 이유를 보여드려요.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+
+  var DATA = {
+    cloudshell:{ kicker:'CLIENT / SHELL', title:'CloudShell + Python 가상환경',
+      config:'Python 3.13 · .venv(boto3, pymysql) · ~/stream51_2/sesac_course_v5\nconfig.json → region ap-northeast-2, student_id sesac14, bucket sesac-sesac14-stream',
+      why:'AWS 콘솔 안에서 바로 쓰는 셸이라 키를 따로 설정하지 않고, 로그인된 계정의 권한으로 스크립트를 실행해요. 전송 스크립트는 전부 여기서 돌렸어요.',
+      points:[
+        {h:'왜 .venv를 따로 만들었나', t:'bash 실행.sh --setup 이 가상환경을 만들고 requirements-aws.txt의 boto3, pymysql을 설치해요. 교안 명령(.venv/bin/python run.py …)이 같은 환경에서 돌게 하는 구조예요.'},
+        {h:'왜 파일 이름 때문에 막혔나', t:'zip 이름과 실행.sh 같은 한글 이름이 맥에서는 자모가 분해된 형태로 저장돼서, 직접 입력한 이름과 글자 구성이 달라 못 찾았어요. 와일드카드(5-1_CloudShell_*.zip, *.sh)로 지정해서 풀었어요.'},
+        {h:'config.json의 account_id는 왜 필요한가', t:'로그인한 계정과 config의 account_id가 다르면 코드가 실행을 막아요. 다른 계정에 잘못 만드는 일을 막는 안전장치예요.'}
+      ], tags:['한글 파일 이름은 와일드카드로 지정'] },
+
+    producer:{ kicker:'EVENT SOURCE', title:'이벤트 전송 스크립트',
+      config:'stream_producer.py produce --kind normal|duplicate|late --tps 10 --apply\nadd_events.py --stream sesac-sesac14-raw --run-id <run_id> --apply',
+      why:'파이프라인에 흘려보낼 이벤트를 만드는 곳이에요. 정상·중복 시나리오를 나눠 보내서 중복 제거가 실제로 필요한 상황을 만들어요.',
+      points:[
+        {h:'--apply를 왜 붙여야 하나', t:'붙이지 않으면 계획만 출력하고 아무것도 전송하지 않아요. --help만 실행하거나 명령 없이 실행했을 때도 전송은 일어나지 않았어요.'},
+        {h:'시나리오 규모', t:'normal은 업무 이벤트 6,000건과 heartbeat 1건, duplicate는 업무 6,100건과 heartbeat 1건이에요(같은 event_id 100건을 한 번 더 보냄). add_events.py는 신규 20건에 그중 5건을 다시 보내 25건을 추가해요.'},
+        {h:'왜 한 번만 실행하나', t:'실행할 때마다 새 run_id나 새 event_id 묶음이 만들어져서, 같은 명령을 또 실행하면 데이터가 더 쌓여요. 결과가 적게 보여도 조회만 반복하는 게 맞아요.'}
+      ], tags:['normal-91cda9fe0590','duplicate-c82aabb4a9ad'] },
+
+    kinesis:{ kicker:'INGEST', title:'Kinesis Data Streams',
+      config:'sesac-sesac14-raw · 프로비저닝 · 샤드 1 · 보존 24시간 · 태그 CourseOwner=sesac14',
+      why:'이벤트를 받는 입구예요. 전송 스크립트가 스트림 이름을 sesac-<student_id>-raw로 고정해서 그 이름 그대로 만들어야 해요.',
+      points:[
+        {h:'왜 이름이 정해져 있나', t:'stream_producer.py가 StreamName=c.prefix + "-raw"로 보내요. 처음에 만들었던 sesac14-stream-raw는 이 이름과 달라서 코드가 찾지 못했어요.'},
+        {h:'왜 샤드 1개인가', t:'교안이 정한 값이고, 10TPS로 약 6,000건을 보내는 규모에는 충분해요.'},
+        {h:'비용', t:'프로비저닝 모드는 샤드 시간당 요금이 계속 나가요. 실습이 끝나면 지워야 해요.'}
+      ], tags:['⚠ 샤드 요금은 켜 둔 동안 계속 나감'] },
+
+    firehose:{ kicker:'INGEST', title:'Firehose',
+      config:'sesac-sesac14-raw-delivery · 소스 Kinesis → 대상 S3 sesac-sesac14-stream\n접두사 stream/raw/ · 오류 접두사 stream/errors/raw/!{firehose:error-output-type}/\n버퍼 1MiB · 60초 · 압축 없음 · 태그 CourseOwner=sesac14 · 역할 sesac-sesac14-firehose',
+      why:'Kinesis에 들어온 이벤트를 모아서 S3에 파일로 써 줘요. 그래서 원본이 이벤트를 보낸 지 1~2분 뒤에 S3에 보여요.',
+      points:[
+        {h:'왜 버퍼가 1MiB·60초인가', t:'교안과 stream_gui.py verify가 이 값을 요구해요. 처음에 콘솔 기본값(5MiB)으로 만들었을 때 verify가 이 줄에서 멈췄고, 새로 만들 때는 CLI로 1MiB를 지정했어요.'},
+        {h:'S3에 어떤 모양으로 쓰이나', t:'stream/raw/YYYY/MM/DD/HH/ 아래(UTC 기준)에 이름 없는 파일로 쌓여요. 전송 스크립트가 이벤트마다 줄바꿈을 붙여서 파일이 한 줄에 JSON 하나예요.'},
+        {h:'역할을 만들자마자 Firehose를 만들면', t:'IAM 반영이 늦어서 assume role 오류가 났어요. 1~2분 뒤 다시 시도하면 돼요.'}
+      ], tags:['오류 접두사의 !{…}는 글자 그대로 입력'] },
+
+    s3_raw:{ kicker:'S3 / RAW', title:'stream/raw/ — 원본',
+      config:'stream/raw/2026/11/10/… · 파일 23개(조회 시점) · 한 줄에 JSON 하나',
+      why:'원본은 건드리지 않고 그대로 보존해요. 정제 규칙이 틀려도 여기서 다시 처리하면 돼요.',
+      points:[
+        {h:'안에 든 것', t:'normal run 업무 6,000건, duplicate run 업무 6,125건(처음 6,100 + 추가 25), heartbeat 2건이에요.'},
+        {h:'왜 중복이 그대로 남아 있나', t:'원본을 지우거나 고치지 않는 것이 이 구조의 핵심이에요. 중복은 정제본에서만 빠져요.'}
+      ] },
+
+    s3_clean:{ kicker:'S3 / CLEAN', title:'stream/batch-clean/current/ — 정제본',
+      config:'Parquet 파일 4개 · 매 실행마다 폴더 통째로 덮어씀(스냅샷) · 현재 duplicate run 6,020건',
+      why:'강사 스크립트가 한 run의 결과를 current/ 한 곳에 스냅샷으로 교체해요. 그래서 마지막으로 정제한 run만 남아요.',
+      points:[
+        {h:'왜 normal run이 안 보이나', t:'job을 duplicate run 하나에만 실행했고, 출력 폴더를 매번 덮어쓰기 때문이에요. normal을 같은 폴더로 정제하면 duplicate 결과가 지워져요.'},
+        {h:'왜 원본 폴더와 겹치면 안 되나', t:'스크립트의 경로 검사가 출력이 입력 안이나 위에 있으면 중단해요. stream/raw/와 stream/batch-clean/current/는 겹치지 않아요.'}
+      ] },
+
+    s3_old:{ kicker:'S3 / FIRST SCRIPT', title:'processed · quarantine · quality',
+      config:'processed/stream/run_id=…(normal·duplicate) · quarantine/stream/duplicates/ · quality/stream/report.json\n첫 번째 job이 2026-11-10 11:31에 한 번 실행한 결과',
+      why:'내가 만든 stream_dedup.py가 쓴 폴더예요. run_id 파티션 Parquet, 제거된 중복 JSON, 건수 보고서를 따로 남겨요.',
+      points:[
+        {h:'그때의 결과', t:'입력 12,102줄 → heartbeat 2 → 업무 12,100 → 정제 12,000, 제거 100건. 그 시점 원본에는 두 run(각 6,000과 6,100)만 있었고 추가 25건은 아직 없었어요.'},
+        {h:'Athena에서 안 보이는 이유', t:'stream_events_clean 테이블은 만들었지만 MSCK REPAIR TABLE을 하지 않아서 파티션이 등록되지 않았어요. 지금 조회하면 0건이에요.'},
+        {h:'이후 스케줄은 이 job을 쓰지 않아요', t:'지금 10분 스케줄은 강사 스크립트 job을 실행해요. 이 폴더는 11:31 이후 갱신되지 않았어요.'}
+      ], tags:['stream_events_clean은 파티션 미등록'] },
+
+    s3_misc:{ kicker:'S3 / SUPPORT', title:'scripts/ · query-results/',
+      config:'scripts/glue/stream_dedup.py · scripts/glue/stream_batch_dedup.py · scripts/temp/\nquery-results/ (Athena 쿼리 결과 CSV와 메타데이터)',
+      why:'Glue job이 읽을 스크립트와 Athena가 쓰는 결과 저장 위치예요. 작업 그룹 설정이 결과 경로를 이 버킷의 query-results/로 고정해요.',
+      points:[
+        {h:'query-results/는 왜 계속 늘어나나', t:'쿼리를 실행할 때마다 결과 파일(.csv와 .csv.metadata)이 쌓여요. 필요 없어지면 지워도 돼요.'}
+      ] },
+
+    scheduler:{ kicker:'CONTROL', title:'EventBridge Scheduler',
+      config:'sesac-sesac14-stream-dedup-trigger · rate(10 minutes) · Asia/Seoul · 유연 시간대 OFF\n시작 12:10:59 · 종료 13:03:47 · 호출 재시도 0\n입력: {input_uri, output_uri, run_id=duplicate-c82aabb4a9ad}',
+      why:'10분마다 상태 머신을 시작해서 새로 쌓인 원본을 자동으로 정제해요. 입력은 만들 때 스케줄 안에 저장해 둔 JSON을 그대로 보내요.',
+      points:[
+        {h:'입력값을 스케줄러가 어떻게 아나', t:'알지 못해요. 스케줄을 만들 때 저장한 입력 JSON을 매번 그대로 StartExecution에 실어 보낼 뿐이에요. 그래서 run_id가 고정이에요.'},
+        {h:'왜 종료 시각을 뒀나', t:'종료가 없으면 하루 144번 Glue job이 계속 돌아요. 강의 자료도 종료를 약 1시간 뒤로 둬요.'},
+        {h:'시작 시각을 바꾼 이유', t:'비활성화했다가 다시 켤 때 시작 시각이 5분보다 오래된 과거면 거부돼서, 시작을 현재로 새로 잡았어요.'},
+        {h:'지금 상태', t:'종료 시각(13:03:47)이 지났어요. 상태 값은 ENABLED로 남아 있지만 더는 실행되지 않아요. 마지막 정제 실행은 13:01:23이에요.'}
+      ], tags:['⚠ 직접 실행과 겹치면 Glue 동시 실행 제한(1)에 걸림'] },
+
+    sfn:{ kicker:'CONTROL', title:'Step Functions',
+      config:'sesac-sesac14-stream-dedup-batch · STANDARD · 상태 CleanEvents → (실패) Failed\nglue:startJobRun.sync · Retry 없음 · ResultPath $.job · 역할 sesac-sesac14-stepfunctions-role',
+      why:'스케줄러가 준 입력을 Glue job 인자로 바꿔서 job을 실행하고, 끝날 때까지 기다리고, 실패하면 Failed로 정리해요.',
+      points:[
+        {h:'입력이 인자로 바뀌는 방식', t:'"--input_uri.$": "$.input_uri"처럼 키 끝의 .$가 실행 입력 JSON의 값을 가져오라는 표시예요. input_uri, output_uri, run_id가 Glue 인자 세 개가 돼요.'},
+        {h:'왜 11:55·11:58 실행이 실패했나', t:'Glue.AccessDeniedException이었어요. 이 역할의 정책이 옛 job 하나만 허용해서 새 job 실행이 거부됐고, 정책에 새 job을 추가한 뒤로는 모두 성공했어요.'},
+        {h:'Retry가 없는 이유', t:'강사 정의 그대로 쓴 거라 재시도가 없어요. 그래서 동시 실행 제한에 걸리면 재시도 없이 바로 실패해요.'}
+      ], tags:['현재 정의는 강사 JSON(JobName만 우리 job 이름)'] },
+
+    glue:{ kicker:'PROCESS', title:'Glue job — 중복 제거',
+      config:'sesac-sesac14-stream-batch-dedup · Glue 5.0 · G.1X 2개 · 타임아웃 10분 · 재시도 0 · 동시 실행 1\n스크립트 scripts/glue/stream_batch_dedup.py · 역할 sesac-sesac14-glueservice-role\n인자: input_uri, output_uri, run_id',
+      why:'원본 이벤트에서 같은 (run_id, event_id)를 하나만 남겨 정제본을 만들어요. 강사가 준 스크립트를 그대로 job으로 등록했어요.',
+      points:[
+        {h:'무엇을 하나', t:'input_uri 아래 JSON을 읽어 run_id가 같은 행만 고르고, heartbeat를 뺀 뒤, (run_id, event_id)별로 ingest_time이 가장 빠른 한 줄만 남겨 output_uri에 Parquet으로 덮어써요. 대상 run의 업무 이벤트가 0건이면 오류로 멈춰요.'},
+        {h:'왜 경로 겹침을 검사하나', t:'출력 경로가 원본 경로 안이나 위에 있으면 원본을 덮어쓸 수 있어서 시작 전에 중단해요.'},
+        {h:'내가 만든 스크립트와 차이', t:'내 것은 raw의 모든 run을 한 번에 처리하고 제거된 중복·깨진 줄·보고서까지 남겨요. 강사 것은 run 하나만 처리하고 결과만 덮어쓰는 단순한 버전이에요. 중복 제거 규칙 자체는 같아요.'},
+        {h:'걸린 시간', t:'스케줄 실행은 70~88초였고, 처음 직접 실행은 107초, 상태 머신 전체는 2분 안팎이에요.'}
+      ], tags:['제거 규칙: (run_id, event_id)별 첫 줄','heartbeat는 결과에서 제외'] },
+
+    athena:{ kicker:'QUERY', title:'Athena',
+      config:'DB sesac-sesac14_stream_db · 작업 그룹 sesac-sesac14_stream_wg\n결과 위치 s3://sesac-sesac14-stream/query-results/ · 작업 그룹 설정 강제',
+      why:'S3에 있는 파일을 복사하지 않고 직접 읽어서 SQL로 조회해요. 원본과 정제본을 나란히 비교하는 데 써요.',
+      points:[
+        {h:'DDL과 SELECT의 따옴표가 다른 이유', t:'DB 이름에 하이픈이 있어서 DDL(CREATE, MSCK, DROP)은 백틱으로 감싸야 하고, SELECT는 큰따옴표를 써요. 콘솔에서는 왼쪽에서 DB를 먼저 골라야 테이블이 보여요.'},
+        {h:'왜 0건이 나올 때가 있나', t:'테이블 위치에 파일이 없거나 파티션 테이블의 파티션을 등록하지 않으면 오류 없이 0건이 나와요.'}
+      ] },
+
+    tbl_raw:{ kicker:'TABLE / RAW', title:'stream_raw_events',
+      config:'ROW FORMAT SERDE org.openx.data.jsonserde.JsonSerDe\n컬럼 7개: run_id, event_id, order_id, event_type, event_time, ingest_time, amount_krw\nLOCATION s3://sesac-sesac14-stream/stream/raw/',
+      why:'원본이 JSON Lines라서 JsonSerDe로 읽어요. SerDe는 파일의 한 줄을 컬럼으로 바꾸는 방법이에요.',
+      points:[
+        {h:'파티션이 없는 이유', t:'원본 폴더의 날짜·시각 폴더는 키=값 형태가 아니어서 파티션으로 쓰지 않았어요. 그래서 MSCK 없이 바로 조회돼요.'},
+        {h:'JsonSerDe 조건', t:'JSON이 한 줄에 하나여야 해요. 전송 스크립트가 이벤트마다 줄바꿈을 붙여서 만족해요.'}
+      ] },
+
+    tbl_clean:{ kicker:'TABLE / CLEAN', title:'stream_batch_clean',
+      config:'STORED AS PARQUET · 컬럼 7개(원본과 동일)\nLOCATION s3://sesac-sesac14-stream/stream/batch-clean/current/',
+      why:'정제본은 Parquet이라 파일 안에 컬럼 정보가 있어서 JsonSerDe가 필요 없어요.',
+      points:[
+        {h:'안에 든 것', t:'duplicate run 6,020건(고유 6,020, 금액 63,020,000)이에요. 중복 키는 0건이에요.'}
+      ] },
+
+    iam_firehose:{ kicker:'IAM', title:'Firehose 역할',
+      config:'sesac-sesac14-firehose · 사용자가 직접 생성 · 신뢰 서비스 firehose.amazonaws.com\n정책: AmazonKinesisFullAccess, CloudWatchFullAccess, AmazonS3FullAccess',
+      why:'Firehose가 Kinesis에서 읽고 S3에 쓰려면 이 역할이 필요해요. 코드와 verify가 이 이름을 기대해요.',
+      points:[
+        {h:'권한이 넓은 이유', t:'교육용 관리형 정책을 그대로 붙여서 범위가 넓어요. 운영에서는 대상 스트림과 버킷으로만 제한해야 해요.'}
+      ], tags:['⚠ 교육용으로 넓은 권한'] },
+
+    iam_glue:{ kicker:'IAM', title:'Glue 서비스 역할',
+      config:'sesac-sesac14-glueservice-role · 신뢰 glue.amazonaws.com\nAWSGlueServiceRole + 인라인 stream-bucket-access(sesac-sesac14-stream만 읽기·쓰기·목록)',
+      why:'Glue job이 S3의 원본을 읽고 정제본을 쓰는 데 필요해요.',
+      points:[
+        {h:'왜 새로 만들고 범위를 줄였나', t:'옛 역할은 S3 전체 접근이었어요. 새 역할은 이 버킷만 허용해서 필요한 만큼만 줬어요.'}
+      ] },
+
+    iam_sfn:{ kicker:'IAM', title:'Step Functions 역할',
+      config:'sesac-sesac14-stepfunctions-role · 신뢰 states.amazonaws.com\n인라인 run-stream-dedup-job: glue:StartJobRun, GetJobRun, GetJobRuns, BatchStopJobRun → job 2개(sesac-sesac14-stream-dedup, sesac-sesac14-stream-batch-dedup)',
+      why:'상태 머신이 Glue job을 실행하고 끝나기를 기다리는 데 필요한 권한만 줬어요.',
+      points:[
+        {h:'왜 정책을 한 번 고쳤나', t:'처음에는 옛 job 하나만 허용했어요. 새 job을 쓰면서 AccessDenied가 나서 새 job 이름을 정책에 추가했어요.'}
+      ] },
+
+    iam_sched:{ kicker:'IAM', title:'Scheduler 역할',
+      config:'sesac-sesac14-scheduler-role · 신뢰 scheduler.amazonaws.com(같은 계정 조건)\n인라인 start-stream-dedup-batch: states:StartExecution → 이 상태 머신만',
+      why:'스케줄러가 상태 머신을 시작하려면 StartExecution 권한이 필요해요.',
+      points:[
+        {h:'왜 범위를 좁혔나', t:'이 스케줄러가 다른 상태 머신을 실행할 이유가 없어서 대상 하나만 허용했어요.'}
+      ] },
+
+    cloudwatch:{ kicker:'OBSERVE', title:'CloudWatch Logs',
+      config:'/aws-glue/jobs/output (드라이버 출력) · 연속 로깅과 지표 사용(--enable-continuous-cloudwatch-log, --enable-metrics)',
+      why:'Glue job이 print한 요약(원본 업무 이벤트 수, 정제 행 수, 제거 건수)을 여기서 읽어요.',
+      points:[
+        {h:'실제로 본 값', t:'강사 스크립트 첫 실행 출력은 raw_business_rows 6,100, clean_rows 6,000, removed_duplicates 100이었어요.'}
+      ] },
+
+    result:{ kicker:'RESULT', title:'원본 vs 정제본',
+      config:'조회 2026-11-10 14:10\n원본 duplicate run: 6,125건 · 고유 6,020 · 금액 64,075,000\n원본 normal run: 6,000건 · 고유 6,000 · 금액 63,000,000\n정제본 duplicate run: 6,020건 · 고유 6,020 · 금액 63,020,000',
+      why:'원본은 그대로 두고 정제본에서만 중복이 빠지는 것을 숫자로 확인했어요. 12:07에 추가한 25건이 12:11 스케줄 실행에서 정제본에 반영됐어요.',
+      points:[
+        {h:'6,125가 안 변하는 이유', t:'원본은 새 이벤트를 보내야만 늘어요. 12:07 이후로 보낸 이벤트가 없고, 스케줄러는 있는 데이터를 정제만 해요.'},
+        {h:'6,125 안의 구성', t:'처음 6,100(고유 6,000 + 중복 100)에 추가 25(신규 20 + 중복 5)를 더하면 6,125, 고유 6,020이에요. 정제본은 중복 105건이 빠진 6,020이에요.'},
+        {h:'금액이 줄어든 이유', t:'중복 이벤트의 금액이 두 번 더해져 있었어요. 한 번씩만 세면 63,020,000이에요.'}
+      ], tags:['정제본 중복 키 0건'] },
+
+    troubles:{ kicker:'LESSONS', title:'겪은 문제 7가지',
+      config:'원인과 해결 순서',
+      why:'같은 실수를 반복하지 않으려고 적어 둔 목록이에요.',
+      points:[
+        {h:'1. 한글 파일 이름을 못 찾음', t:'맥의 자모 분해 이름 때문에 입력한 이름과 달랐어요. 와일드카드로 지정해서 해결했어요.'},
+        {h:'2. 버킷에 CourseOwner 태그가 없음', t:'stream_gui.py prepare가 NoSuchTagSet으로 멈췄어요. 버킷에 태그 CourseOwner=sesac14를 추가해서 해결했어요.'},
+        {h:'3. Kinesis 스트림 이름이 코드와 다름', t:'코드는 sesac-<student_id>-raw로 고정인데 다른 이름으로 만들었어요. 코드가 기대하는 이름으로 새로 만들었어요.'},
+        {h:'4. Firehose 버퍼가 5MiB', t:'콘솔 기본값이라 verify가 실패했어요. 1MiB·60초로 맞췄어요.'},
+        {h:'5. Firehose 역할 assume role 오류', t:'방금 만든 역할의 반영 지연이었어요. 1~2분 기다린 뒤 다시 만들었어요.'},
+        {h:'6. 상태 머신이 새 job을 못 실행', t:'역할 정책이 옛 job만 허용했어요. 정책에 새 job을 추가했어요.'},
+        {h:'7. 스케줄을 다시 켜는데 시작 시각 오류', t:'시작 시각은 5분보다 오래된 과거일 수 없어서, 시작을 현재로 새로 잡았어요.'}
+      ] },
+
+    instructor:{ kicker:'LOCAL / COURSE', title:'강사 스크립트 stream_batch_dedup.py',
+      config:'Glue Spark · 인자 input_uri, output_uri, run_id\nrun_id 한 개만 처리 · ROW_NUMBER로 (run_id, event_id) 첫 줄 · 출력 폴더 통째 덮어쓰기 · 경로 겹침 검사',
+      why:'강사가 준 단순한 버전이라 그대로 job으로 등록해서 스케줄에 연결했어요.',
+      points:[
+        {h:'가진 안전장치', t:'출력 경로가 원본과 겹치면 중단하고, 대상 run에 업무 이벤트가 없으면 오류로 멈춰요.'},
+        {h:'없는 것', t:'제거된 중복 저장, 깨진 줄 분리, 품질 보고서, 파티션이 없어요.'}
+      ] },
+
+    mine:{ kicker:'LOCAL', title:'내가 만든 스크립트 stream_dedup.py',
+      config:'Glue Spark · 인자 bucket, input_prefix, output_prefix\nraw의 모든 run 처리 · run_id 파티션 · 제거된 중복·깨진 줄 격리 · 품질 보고서',
+      why:'강의 clean.py를 본떠서 만든 확장 버전이에요. 첫 번째 job(sesac-sesac14-stream-dedup)으로 한 번 실행했어요.',
+      points:[
+        {h:'강의 clean.py와 다른 점', t:'dropDuplicates 대신 ROW_NUMBER로 어느 행을 남길지 정하고, 제거된 중복을 따로 저장하며, 보고서를 테이블 폴더 밖(quality/)에 둬요.'}
+      ] },
+
+    leftover:{ kicker:'CLEANUP', title:'남아 있는 옛 이름 자원',
+      config:'조회 2026-11-10 14:1x 기준\nS3 sesac14-stream · Glue job sesac14-stream-dedup · 상태 머신 sesac14-stream-dedup-batch\nIAM sesac14-glueservice-role, StepFunctions-sesac14-gluedata2-batch-role-*(2개), StepFunctions-sesac14-state-test1-role-*',
+      why:'접두사 sesac-가 없는 이름이 옛 환경 자원이에요. 새 환경과 이름이 겹치지 않아서 같이 있어도 충돌은 없지만, 지울 때 헷갈리지 않게 적어 뒀어요.',
+      points:[
+        {h:'정리 순서 제안', t:'Glue job과 상태 머신 같은 실행 자원을 먼저 지우고, 그 뒤에 역할, 마지막에 버킷을 비우고 지워요. 버킷에는 옛 원본과 결과 파일이 들어 있어요.'}
+      ], tags:['⚠ Kinesis 샤드는 지울 때까지 요금 발생'] }
+  };
+
+  var scrim = document.getElementById('scrim');
+  var drawer = document.getElementById('drawer');
+  var closeBtn = document.getElementById('drawer-close');
+  var titleEl = document.getElementById('drawer-title');
+  var kickerEl = document.getElementById('drawer-kicker');
+  var bodyEl = document.getElementById('drawer-body');
+  var activeBtn = null;
+
+  function openDrawer(id, btn){
+    var d = DATA[id];
+    if(!d) return;
+    if(activeBtn) activeBtn.classList.remove('active');
+    activeBtn = btn;
+    if(btn) btn.classList.add('active');
+
+    kickerEl.textContent = d.kicker;
+    titleEl.textContent = d.title;
+
+    var html = '';
+    html += '<div class="field"><p class="field-label">실제 설정</p><p class="field-value mono">'+escapeHtml(d.config)+'</p></div>';
+    html += '<div class="field"><p class="field-label">왜 이렇게 했나</p><p class="field-value">'+escapeHtml(d.why)+'</p></div>';
+    if(d.points && d.points.length){
+      html += '<div class="field"><p class="field-label">항목별 근거</p><div class="point-list">';
+      d.points.forEach(function(p){
+        html += '<div class="point"><p class="point-h">'+escapeHtml(p.h)+'</p><p class="point-t">'+escapeHtml(p.t)+'</p></div>';
+      });
+      html += '</div></div>';
+    }
+    if(d.tags && d.tags.length){
+      html += '<div class="field"><p class="field-label">세부 규칙 / 참고</p><div class="tag-row">';
+      d.tags.forEach(function(t){
+        var warn = t.indexOf('⚠') === 0;
+        html += '<span class="tag'+(warn?' warn':'')+'">'+escapeHtml(t)+'</span>';
+      });
+      html += '</div></div>';
+    }
+    bodyEl.innerHTML = html;
+
+    scrim.classList.add('open');
+    drawer.classList.add('open');
+  }
+
+  function closeDrawer(){
+    scrim.classList.remove('open');
+    drawer.classList.remove('open');
+    if(activeBtn) activeBtn.classList.remove('active');
+    activeBtn = null;
+  }
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+
+  document.addEventListener('click', function(e){
+    var btn = e.target.closest('button[data-id]');
+    if(btn){
+      openDrawer(btn.getAttribute('data-id'), btn);
+      return;
+    }
+  });
+
+  closeBtn.addEventListener('click', closeDrawer);
+  scrim.addEventListener('click', closeDrawer);
+  document.addEventListener('keydown', function(e){
+    if(e.key === 'Escape') closeDrawer();
+  });
+
+})();
+</script>
+</body>
+</html>

@@ -3,621 +3,98 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>PetClinic 인프라 지도</title>
+<meta name="description" content="AWS 아키텍처 지도 모음: PetClinic 인프라, 스트림 데이터 파이프라인">
+<title>아키텍처 지도</title>
 <style>
 :root{
   --ink:#16191f;
   --muted:#545b64;
   --line:#5f6b7a;
-  --purple:#8c4fff;
-  --bg:#ffffff;
-  --surface:#ffffff;
-  --surface-2:#f4f6f8;
   --border:#d5dbe1;
-  --fg:#16191f;
-  --fg-dim:#545b64;
+  --surface-2:#f4f6f8;
   --accent:#0073bb;
-  --accent-2:#9a6700;
-  --danger:#d13212;
   color-scheme:light;
 }
 *{box-sizing:border-box}
 body{margin:0;background:#fff;color:var(--ink);font-family:"Helvetica Neue",Arial,"Apple SD Gothic Neo","Noto Sans KR",sans-serif}
-.wrap{max-width:1240px;margin:0 auto;padding:16px 16px 40px}
-header.page{margin:0 0 12px}
+.wrap{max-width:1040px;margin:0 auto;padding:56px 20px 48px}
 .eyebrow{margin:0;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
-h1{margin:2px 0 0;font-size:18px;font-weight:700;letter-spacing:-.01em}
-.lead{margin:3px 0 0;color:var(--muted);font-size:13px}
+h1{margin:4px 0 0;font-size:26px;font-weight:700;letter-spacing:-.01em}
+.lead{margin:8px 0 0;color:var(--muted);font-size:15px;line-height:1.7;max-width:56ch}
 
-.stage{display:grid;grid-template-columns:minmax(0,1fr) 236px;column-gap:14px;align-items:start}
-.edge{grid-column:1}
-.aws{grid-column:1 / -1}
-.aws-body{display:grid;grid-template-columns:minmax(0,1fr) 236px;column-gap:14px;align-items:start}
-.rail{display:flex;flex-direction:column;gap:12px}
-
-.flow{display:flex;align-items:flex-start;justify-content:center}
-.svc{display:flex;flex-direction:column;align-items:center;gap:3px;width:78px;padding:0;border:0;background:transparent;color:inherit;font:inherit;cursor:pointer}
-div.svc{cursor:default}
-.lbl{font-size:11px;line-height:1.25;text-align:center;color:#232f3e}
-.lbl small{display:block;color:var(--muted);font-size:10px;font-weight:400}
-.ico{width:40px;height:40px;display:block;object-fit:contain}
-.tile{width:40px;height:40px;border-radius:8px;display:grid;place-items:center;flex:none}
-.tile img{width:24px;height:24px;display:block}
-.tile.ink{background:#232f3e}
+.cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:32px}
+.card{display:flex;flex-direction:column;gap:14px;padding:22px 22px 20px;border:1.5px solid #232f3e;border-radius:10px;background:#fff;color:inherit;text-decoration:none;transition:transform .15s ease,box-shadow .15s ease,border-color .15s ease}
+.card:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(22,25,31,.10);border-color:var(--accent)}
+.card:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.card-top{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.kind{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);font-weight:600}
+.icons{display:flex;gap:8px;align-items:center}
+.icons img{width:32px;height:32px;display:block;object-fit:contain}
+.tile{width:32px;height:32px;border-radius:7px;display:grid;place-items:center;flex:none}
+.tile b{color:#fff;font-size:9px;font-weight:700;letter-spacing:.02em;line-height:1}
 .tile.purple{background:#8C4FFF}
-.tile.purple img{filter:brightness(0) invert(1)}
-.tile.brand img{width:22px;height:22px;filter:brightness(0) invert(1)}
-.tile.discord{background:#5865F2}
-.tile.github{background:#24292f}
-.tile.graf{background:#F46800}
-.tile.tf{background:#7B42BC}
-button.svc:hover .ico,button.svc:hover .tile{transform:translateY(-1px)}
-button.svc:focus-visible{outline:2px solid #0073bb;outline-offset:2px;border-radius:8px}
-button.svc.active .ico,button.svc.active .tile{outline:2px solid #0073bb;outline-offset:2px}
-
-.arr{flex:none;width:16px;height:0;border-top:1.5px solid var(--line);margin-top:18px;position:relative}
-.arr::after{content:"";position:absolute;right:-1px;top:-4px;border:4px solid transparent;border-left:5px solid var(--line)}
-.arr.dot{border-top-style:dashed;width:22px}
-.arr.dot.rev::after{right:auto;left:-1px;border-left-color:transparent;border-right:5px solid var(--line)}
-
-.cf-row{display:flex;justify-content:center;margin-top:2px}
-.pill{border:1px solid var(--purple);color:#5c35c4;font-size:10px;line-height:1.35;text-align:center;border-radius:3px;padding:3px 8px;background:#fff}
-.drop{display:flex;flex-direction:column;align-items:center;color:var(--muted);font-size:10px;line-height:1.35;text-align:center;margin-top:6px}
-.drop b{font-weight:600;color:#3a4553}
-.drop i{display:block;width:0;height:28px;border-left:1.5px dashed var(--line);position:relative;margin-top:3px}
-.drop i::after{content:"";position:absolute;left:-4px;bottom:-1px;border:4px solid transparent;border-top:6px solid var(--line)}
-
-.aws{border:1.5px solid #232f3e;border-radius:8px;padding:10px 12px 12px;background:#fff}
-.aws-cap{display:flex;align-items:center;gap:6px;font-weight:700;font-size:13px;margin:0 0 10px}
-.aws-cap img{width:22px;height:16px;object-fit:contain}
-
-.vpc{border:1.5px solid #248814;border-radius:4px;padding:10px 10px 12px;position:relative}
-.vpc-cap{color:#1d8102;font-size:12px;font-weight:700;display:flex;gap:4px;align-items:center;margin:0 0 8px}
-.vpc-cap img{width:16px;height:16px}
-
-.center{display:flex;justify-content:center}
-.vstem{width:0;height:12px;border-left:1.5px solid var(--line);margin:0 auto}
-.cols{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px}
-.sub{border-radius:2px;min-height:78px;padding:18px 6px 8px;position:relative}
-.subcap{position:absolute;top:3px;left:7px;font-size:11px}
-.pub{background:#f2f8f2;border:1.5px solid #8fce7a}
-.pub .subcap{color:#1d6b12}
-.web{background:#f3fbfb;border:1.5px dashed #8fd0cc}
-.web .subcap{color:#0d6a70}
-.wasb{background:#fff6ec;border:1.5px dashed #f0b27a}
-.wasb .subcap{color:#c45500}
-.wasb .svc{width:58px}
-.wasb .ico,.wasb .tile{width:30px;height:30px}
-.wasb .tile img{width:18px;height:18px}
-.wasb .arr{width:10px;margin-top:12px}
-.db .svc{width:62px}
-.hanger{width:68%;height:8px;border:1.5px solid var(--line);border-bottom:0;margin:2px auto 0}
-.hanger.down{border-top:0;border-bottom:1.5px solid var(--line);margin:0 auto 2px}
-.webcols{grid-template-columns:1fr auto 1fr;align-items:stretch}
-.vpce-link{display:block;margin:2px auto 0;border:0;background:none;color:#3b48cc;font:inherit;font-size:10px;cursor:pointer;text-align:center}
-.db-wrap{margin-top:8px;grid-template-columns:1fr auto 1fr;align-items:center}
-.db-wrap .maz{position:static;transform:none;margin:0;white-space:nowrap}
-.db{background:#f4f6fe;border:1.5px solid #a3adec}
-.db .subcap{color:#2c3bb5}
-.row{display:flex;justify-content:center;align-items:flex-start}
-.row .svc{width:68px}
-.row .lbl{font-size:10px}
-.empty-note{margin:16px 8px 0;text-align:center;color:var(--muted);font-size:11px}
-.tier{display:flex;flex-direction:column;align-items:center;margin:2px 0}
-.asg{margin-top:1px;font-size:11px;font-weight:700;color:#d06a00;text-align:center}
-.proxy{margin:4px 0 0;font-size:10px;color:var(--muted);text-align:center}
-.maz{margin:8px auto 0;width:max-content;border:1px solid #c5ccd3;background:#fff;padding:4px 18px;font-size:11px}
-.s3wrap{margin:4px 0 0 8px}
-.s3wrap .svc{width:120px}
-
-.panel{border:1.5px dashed #e3a45a;border-radius:6px;padding:8px 6px 10px;background:#fff}
-.panel h3{margin:0 0 8px;text-align:center;font-size:12px;font-weight:700}
-.panel.cicd{border-color:#c5ccd3}
-.igrid{display:grid;grid-template-columns:1fr 1fr;gap:6px 0;justify-items:center}
-.panel .svc{width:96px}
-.panel .ico{width:32px;height:32px}
-.panel .glyph{width:18px;height:18px}
-.note-box{margin:8px 6px 0;border:1px dashed #e3a45a;border-radius:4px;padding:6px;font-size:10px;line-height:1.4;color:#9a5410;text-align:center}
-.logbox{margin:8px 10px 0;border:1px solid #d5dbe0;padding:6px;font-size:10px;text-align:center;color:var(--muted)}
-.mini{display:flex;align-items:flex-start;justify-content:center}
-.stack{display:flex;flex-direction:column;align-items:center;gap:1px}
-.downlab{font-size:10px;color:var(--muted);line-height:1.3;text-align:center}
-
-footer.note{margin-top:18px;padding-top:12px;border-top:1px solid #e6eaed;color:var(--muted);font-size:12px;line-height:1.7}
-footer.note button{border:0;background:none;padding:0;color:#0073bb;font:inherit;cursor:pointer}
-footer.note button:hover{text-decoration:underline}
-
-.scrim{position:fixed;inset:0;background:rgba(22,25,31,.45);opacity:0;pointer-events:none;transition:opacity .18s ease;z-index:20}
-.scrim.open{opacity:1;pointer-events:auto}
-.drawer{position:fixed;right:0;top:0;bottom:0;width:min(440px,100%);background:#fff;border-left:1px solid var(--border);z-index:21;transform:translateX(100%);transition:transform .22s cubic-bezier(.2,.7,.3,1);display:flex;flex-direction:column}
-.drawer.open{transform:translateX(0)}
-@media (max-width:640px){
-  .drawer{right:0;left:0;top:auto;width:auto;max-height:82vh;border-left:none;border-top:1px solid var(--border);border-radius:16px 16px 0 0;transform:translateY(100%)}
-  .drawer.open{transform:translateY(0)}
-}
-.drawer-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:18px 18px 12px;border-bottom:1px solid var(--border)}
-.drawer-head .k{margin:0 0 4px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
-.drawer-head h2{margin:0;font-size:18px}
-.close-btn{width:32px;height:32px;border-radius:8px;border:1px solid var(--border);background:var(--surface-2);color:var(--muted);font-size:16px;cursor:pointer}
-.drawer-body{padding:16px 18px 28px;overflow:auto}
-.field{margin-bottom:18px}
-.field-label{margin:0 0 6px;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
-.field-value{margin:0;font-size:14px;line-height:1.7}
-.field-value.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;background:#f4f6f8;border:1px solid var(--border);border-radius:8px;padding:10px 12px;white-space:pre-wrap;word-break:break-word}
-.point-list{display:flex;flex-direction:column;gap:12px}
-.point{border-left:2px solid var(--accent);padding-left:12px}
-.point-h{margin:0 0 3px;font-size:13px;font-weight:650}
-.point-t{margin:0;font-size:13px;line-height:1.65;color:#3d4a57}
-.tag-row{display:flex;gap:6px;flex-wrap:wrap}
+.tile.pink{background:#E7157B}
+.tile.flink{background:#6f42c1}
+.card h2{margin:0;font-size:20px;font-weight:700;letter-spacing:-.01em}
+.card p{margin:0;font-size:14px;line-height:1.7;color:#3d4a57}
+.flow{font-size:12.5px;line-height:1.6;color:var(--muted);padding:10px 12px;background:var(--surface-2);border-radius:8px}
+.tags{display:flex;flex-wrap:wrap;gap:6px}
 .tag{font-size:11px;border:1px solid var(--border);color:var(--muted);padding:3px 8px;border-radius:100px}
-.tag.warn{border-color:#e6c27a;color:#8a5a00}
-.empty-state{display:flex;flex-direction:column;align-items:center;text-align:center;padding:36px 16px;color:var(--muted);gap:8px}
-.empty-state p{margin:0;font-size:13px;line-height:1.6;max-width:28ch}
-@media (max-width:860px){
-  .stage,.aws-body{grid-template-columns:1fr}
-  .flow{justify-content:flex-start;overflow-x:auto;padding-bottom:4px}
+.go{margin-top:auto;display:inline-flex;align-items:center;gap:6px;font-size:14px;font-weight:600;color:var(--accent)}
+.go::after{content:"→";transition:transform .15s ease}
+.card:hover .go::after{transform:translateX(3px)}
+
+footer{margin-top:36px;padding-top:14px;border-top:1px solid #e6eaed;color:var(--muted);font-size:12px;line-height:1.7}
+@media (max-width:760px){
+  .wrap{padding:36px 16px 32px}
+  h1{font-size:22px}
+  .cards{grid-template-columns:1fr}
 }
 </style>
 </head>
 <body>
-  <div class="wrap">
-  <div class="stage">
-    <div class="edge">
-      <div class="flow">
-        <button type="button" class="svc" data-id="user"><span class="tile ink"><img src="icons/user.svg" alt=""></span><span class="lbl">User</span></button>
-        <span class="arr"></span>
-        <button type="button" class="svc" data-id="route53"><img class="ico" src="icons/route53.svg" alt=""><span class="lbl">Route 53<small>(assac.cloud)</small></span></button>
-        <span class="arr"></span>
-        <div class="svc"><span class="tile ink"><img src="icons/internet.svg" alt=""></span><span class="lbl">Internet</span></div>
-        <span class="arr"></span>
-        <button type="button" class="svc" data-id="cloudfront"><img class="ico" src="icons/cloudfront.svg" alt=""><span class="lbl">CloudFront</span></button>
-        <span class="arr dot rev"></span>
-        <button type="button" class="svc" data-id="waf"><img class="ico" src="icons/waf.svg" alt=""><span class="lbl">WAF<small>Managed Rules</small></span></button>
-        <span class="arr"></span>
-        <button type="button" class="svc" data-id="cloudwatch"><img class="ico" src="icons/cloudwatch.svg" alt=""><span class="lbl">CloudWatch<small>Logs (WAF)</small></span></button>
-        <span class="arr"></span>
-        <button type="button" class="svc" data-id="waf"><img class="ico" src="icons/lambda.svg" alt=""><span class="lbl">Lambda<small>WAF 로그 알림</small></span></button>
-        <span class="arr"></span>
-        <button type="button" class="svc" data-id="waf"><span class="tile brand discord"><img src="icons/discord.svg" alt=""></span><span class="lbl">Discord<small>실시간 알림</small></span></button>
+<main class="wrap">
+  <p class="eyebrow">arch.hyeon.im</p>
+  <h1>아키텍처 지도</h1>
+  <p class="lead">구성 요소를 눌러 보면 실제 설정과 쓰는 이유를 볼 수 있는 인터랙티브 아키텍처 지도예요. 보고 싶은 지도를 골라 주세요.</p>
+
+  <div class="cards">
+    <a class="card" href="petclinic-arch.html">
+      <div class="card-top">
+        <span class="kind">Web service infra</span>
+        <span class="icons" aria-hidden="true">
+          <img src="icons/cloudfront.svg" alt="">
+          <img src="icons/alb.svg" alt="">
+          <img src="icons/ec2.svg" alt="">
+          <img src="icons/rds.svg" alt="">
+        </span>
       </div>
-      <div class="cf-row"><span class="pill">Path-based Routing<br>(정적 캐시, 오리진 전달)</span></div>
-      <div class="drop"><b>Custom Origin (HTTPS)</b>ACM (WA)<i></i></div>
-    </div>
+      <h2>PetClinic 인프라 지도</h2>
+      <p>웹 서비스 하나를 운영하기 위한 AWS 인프라 전체 구조예요. 네트워크, 로드밸런서, 오토스케일링, 데이터베이스, 보안과 알림까지 한 장에 담았어요.</p>
+      <div class="flow">Route 53 → CloudFront → WAF → ALB → Web · WAS(Auto Scaling) → RDS Multi-AZ</div>
+      <div class="tags"><span class="tag">VPC</span><span class="tag">Auto Scaling</span><span class="tag">RDS Multi-AZ</span><span class="tag">Secrets Manager</span><span class="tag">Terraform</span></div>
+      <span class="go">지도 열기</span>
+    </a>
 
-    <section class="aws">
-      <h2 class="aws-cap"><img src="icons/aws-cloud.svg" alt="">AWS Cloud (Seoul Region)</h2>
-      <div class="aws-body">
-        <div class="vpc">
-          <div class="vpc-cap"><img src="icons/vpc.svg" alt="">VPC (10.0.0.0/16)</div>
-          <div class="center">
-            <button type="button" class="svc" data-id="igw"><span class="tile purple"><img src="icons/igw.svg" alt=""></span><span class="lbl">Internet<br>Gateway</span></button>
-          </div>
-          <div class="vstem"></div>
-          <div class="cols">
-            <div class="sub pub">
-              <span class="subcap">public-subnet-a (public)</span>
-              <div class="row">
-                <button type="button" class="svc" data-id="nat"><span class="tile purple"><img src="icons/nat.svg" alt=""></span><span class="lbl">NAT<br>Gateway</span></button>
-                <button type="button" class="svc" data-id="bastion"><img class="ico" src="icons/ec2.svg" alt=""><span class="lbl">Bastion</span></button>
-              </div>
-            </div>
-            <div class="sub pub">
-              <span class="subcap">public-subnet-c (public)</span>
-              <p class="empty-note">(NAT · Bastion — 단일)</p>
-            </div>
-          </div>
-
-          <div class="tier">
-            <div class="hanger"></div>
-            <button type="button" class="svc" data-id="alb_ext"><img class="ico" src="icons/alb.svg" alt=""><span class="lbl">ALB (External)<small>443 → 80</small></span></button>
-            <div class="asg">ASG (Web / Apache) — min 2 / desired 2 / max 6 · t3.small</div>
-            <div class="hanger down"></div>
-          </div>
-
-          <div class="cols webcols">
-            <div class="sub web">
-              <span class="subcap">Web-subnet-a (private)</span>
-              <div class="row">
-                <div class="svc"><img class="ico" src="icons/ec2.svg" alt=""><span class="lbl">Apache<small>WEB01</small></span></div>
-              </div>
-            </div>
-            <p class="proxy">→ ALB →<br>Reverse Proxy</p>
-            <div class="sub web">
-              <span class="subcap">Web-subnet-c (private)</span>
-              <div class="row">
-                <div class="svc"><img class="ico" src="icons/ec2.svg" alt=""><span class="lbl">WEB02<small>Apache</small></span></div>
-              </div>
-            </div>
-          </div>
-
-          <div class="tier">
-            <div class="hanger"></div>
-            <button type="button" class="svc" data-id="alb_int"><img class="ico" src="icons/alb.svg" alt=""><span class="lbl">ALB (Internal)<small>80 → 8080</small></span></button>
-            <div class="asg">ASG (WAS) — SNS + Discord 알림</div>
-            <div class="hanger down"></div>
-          </div>
-
-          <div class="cols">
-            <div class="sub wasb">
-              <span class="subcap">WAS-subnet-a (private)</span>
-              <div class="row">
-                <button type="button" class="svc" data-id="was"><img class="ico" src="icons/ec2.svg" alt=""><span class="lbl">PetClinic<small>WAS01</small></span></button>
-                <span class="arr"></span>
-                <button type="button" class="svc" data-id="cloudwatch"><img class="ico" src="icons/cloudwatch.svg" alt=""><span class="lbl">CloudWatch</span></button>
-                <span class="arr"></span>
-                <button type="button" class="svc" data-id="asg_alert"><img class="ico" src="icons/lambda.svg" alt=""><span class="lbl">Lambda</span></button>
-                <span class="arr"></span>
-                <button type="button" class="svc" data-id="asg_alert"><span class="tile brand discord"><img src="icons/discord.svg" alt=""></span><span class="lbl">Discord</span></button>
-              </div>
-            </div>
-            <div class="sub wasb">
-              <span class="subcap">WAS-subnet-c (private)</span>
-              <div class="row">
-                <button type="button" class="svc" data-id="was"><img class="ico" src="icons/ec2.svg" alt=""><span class="lbl">WAS02</span></button>
-              </div>
-            </div>
-          </div>
-
-          <div class="cols db-wrap">
-            <div class="sub db">
-              <span class="subcap">DB-subnet-a (private)</span>
-              <div class="row">
-                <button type="button" class="svc" data-id="rds"><img class="ico" src="icons/rds.svg" alt=""><span class="lbl">RDS<small>MySQL 8.4</small></span></button>
-                <span class="arr"></span>
-                <button type="button" class="svc" data-id="secrets"><img class="ico" src="icons/secrets.svg" alt=""><span class="lbl">Secrets<br>Manager</span></button>
-                <span class="arr"></span>
-                <button type="button" class="svc" data-id="secrets"><img class="ico" src="icons/lambda.svg" alt=""><span class="lbl">Lambda<small>로테이션</small></span></button>
-              </div>
-              <button type="button" class="vpce-link" data-id="vpce">VPC Endpoint · Secrets Manager</button>
-            </div>
-            <div class="maz">Multi-AZ Replication</div>
-            <div class="sub db">
-              <span class="subcap">DB-subnet-c (private)</span>
-              <div class="row">
-                <button type="button" class="svc" data-id="rds"><img class="ico" src="icons/rds.svg" alt=""><span class="lbl">RDS<small>대기</small></span></button>
-              </div>
-            </div>
-          </div>
-
-          <div class="s3wrap">
-            <div class="vstem"></div>
-            <button type="button" class="svc" data-id="s3"><img class="ico" src="icons/s3.svg" alt=""><span class="lbl">S3<small>CloudTrail · ALB 로그 · state</small></span></button>
-          </div>
-        </div>
-
-        <aside class="rail">
-          <section class="panel">
-            <h3>운영 / 보안 (Well-Architected)</h3>
-            <div class="igrid">
-              <button type="button" class="svc" data-id="s3"><img class="ico" src="icons/cloudtrail.svg" alt=""><span class="lbl">CloudTrail<small>감사 로그</small></span></button>
-              <button type="button" class="svc" data-id="iam"><img class="ico" src="icons/iam.svg" alt=""><span class="lbl">IAM<small>직무 분리 · MFA</small></span></button>
-              <button type="button" class="svc" data-id="guardduty"><img class="ico" src="icons/guardduty.svg" alt=""><span class="lbl">GuardDuty<small>위협 탐지</small></span></button>
-              <button type="button" class="svc" data-id="cloudwatch"><img class="ico" src="icons/cost.svg" alt=""><span class="lbl">Cost Explorer<small>Budgets</small></span></button>
-            </div>
-            <div class="note-box">EC2 SSM 역할 등<br>최소 권한 · 감사 기록</div>
-            <div class="mini">
-              <button type="button" class="svc" data-id="guardduty"><img class="ico" src="icons/lambda.svg" alt=""><span class="lbl">Lambda<small>GuardDuty 알림</small></span></button>
-              <span class="arr"></span>
-              <button type="button" class="svc" data-id="guardduty"><span class="tile brand discord"><img src="icons/discord.svg" alt=""></span><span class="lbl">Discord</span></button>
-            </div>
-          </section>
-
-          <section class="panel">
-            <h3>모니터링 (Observability)</h3>
-            <div class="mini">
-              <button type="button" class="svc" data-id="grafana"><img class="ico" src="icons/amp.svg" alt=""><span class="lbl">Amazon Managed<br>Prometheus (AMP)</span></button>
-              <span class="arr"></span>
-              <button type="button" class="svc" data-id="grafana"><img class="ico" src="icons/grafana.svg" alt=""><span class="lbl">Managed Grafana</span></button>
-            </div>
-            <div class="logbox">로그 그룹 / 대시보드</div>
-          </section>
-
-          <section class="panel cicd">
-            <h3>CI/CD &amp; IaC</h3>
-            <div class="mini">
-              <button type="button" class="svc" data-id="cicd"><span class="tile brand github"><img src="icons/github.svg" alt=""></span><span class="lbl">GitHub</span></button>
-              <span class="arr"></span>
-              <button type="button" class="svc" data-id="cicd"><span class="tile brand github"><img src="icons/githubactions.svg" alt=""></span><span class="lbl">GitHub Actions</span></button>
-            </div>
-            <div class="stack">
-              <span class="downlab">↓ Build &amp; Push</span>
-              <button type="button" class="svc" data-id="docker"><img class="ico" src="icons/ecr.svg" alt=""><span class="lbl">ECR</span></button>
-            </div>
-            <div class="logbox">
-              <button type="button" class="svc" data-id="terraform" style="width:auto"><span class="tile brand tf"><img src="icons/terraform.svg" alt=""></span><span class="lbl">Terraform<small>모듈 · S3 state · 잠금</small></span></button>
-            </div>
-          </section>
-        </aside>
+    <a class="card" href="stream-pipeline-arch.html">
+      <div class="card-top">
+        <span class="kind">Data pipeline</span>
+        <span class="icons" aria-hidden="true">
+          <span class="tile purple"><b>KDS</b></span>
+          <img src="icons/s3.svg" alt="">
+          <span class="tile purple"><b>Glue</b></span>
+          <span class="tile flink"><b>Flink</b></span>
+        </span>
       </div>
-    </section>
+      <h2>스트림 데이터 파이프라인 지도</h2>
+      <p>이벤트를 스트리밍으로 받아서 배치로 정리하고, 같은 스트림에서 갈라져 실시간으로 집계하는 데이터 파이프라인이에요. 각 서비스의 개념과 쓰는 이유를 설명해 뒀어요.</p>
+      <div class="flow">Kinesis → Firehose → S3 → Glue(배치 정리) → Athena<br>Kinesis → Flink(실시간 집계) → Firehose → S3 → Athena</div>
+      <div class="tags"><span class="tag">Kinesis</span><span class="tag">Firehose</span><span class="tag">Glue</span><span class="tag">Step Functions</span><span class="tag">Flink</span><span class="tag">Athena</span></div>
+      <span class="go">지도 열기</span>
+    </a>
   </div>
 
-  <footer class="note">
-    아이콘은 조회용이에요. 설정값은 실제 AWS 리소스에서 읽은 값이고, 이유는 그 설정과 작업 중 겪은 일에서 추론한 내용이에요.
-    <button type="button" data-id="route_table">라우팅 테이블</button> ·
-    <button type="button" data-id="vpce">VPC 엔드포인트</button>
-  </footer>
-</div>
-
-<div class="scrim" id="scrim"></div>
-<div class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="drawer-title">
-  <div class="drawer-head">
-    <div>
-      <p class="k" id="drawer-kicker">SELECT A NODE</p>
-      <h2 id="drawer-title">구성 요소를 선택하세요</h2>
-    </div>
-    <button class="close-btn" id="drawer-close" aria-label="닫기">✕</button>
-  </div>
-  <div class="drawer-body" id="drawer-body">
-    <div class="empty-state">
-      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
-      <p>왼쪽 다이어그램에서 아무 박스나 눌러보세요. 실제 설정값과 그렇게 만든 이유를 보여드려요.</p>
-    </div>
-  </div>
-</div>
-
-<script>
-(function(){
-
-  var DATA = {
-    user:{ kicker:'CLIENT', title:'사용자', config:'브라우저에서 assac.cloud 접속', why:'외부에서 서비스에 처음 접근하는 지점이에요.' },
-
-    route53:{ kicker:'DNS', title:'Route 53', config:'assac.cloud → A 별칭 → CloudFront, origin.assac.cloud → A 별칭 → 외부 ALB', why:'기억하기 쉬운 커스텀 도메인을 쓰기 위해서예요. Alias 레코드라 CloudFront IP가 바뀌어도 자동으로 따라가요.',
-      points:[
-        {h:'왜 A 레코드에 IP를 직접 안 넣고 Alias인가', t:'CloudFront의 엣지 IP는 AWS가 내부적으로 여러 개를 운영하고 필요시 바꿔요. 일반 A 레코드로 IP를 박아두면 그 IP가 바뀌는 순간 도메인이 죽어요. Alias는 "IP가 아니라 CloudFront 도메인 자체를 가리키는" 방식이라 AWS가 IP를 바꿔도 자동으로 따라가고, 게다가 일반 CNAME과 달리 루트 도메인(zone apex)에도 쓸 수 있어요.'},
-        {h:'왜 Route 53인가 (다른 DNS 대신)', t:'AWS 리소스(CloudFront, ALB 등)와 같은 콘솔·IAM 안에서 관리되니까 권한 통제가 하나로 합쳐지고, Alias 레코드 같은 AWS 전용 기능을 쓸 수 있어요. 헬스체크 기반 라우팅으로 향후 장애조치(failover)도 같은 서비스 안에서 확장할 수 있고요.'}
-      ] },
-
-    cloudfront:{ kicker:'EDGE / CDN', title:'CloudFront', config:'HTTP/2, IPv6, redirect-to-https, TLSv1.2_2021, SNI-only 인증서', why:'HTTP 요청은 전부 HTTPS로 강제 전환해요. SNI-only를 쓴 이유는 전용 IP 방식(Dedicated IP)이 월 수백 달러가 들기 때문이고, TLS 1.2 미만 클라이언트는 아예 차단해서 오래된 암호화 방식을 막아요.',
-      points:[
-        {h:'왜 ALB 앞에 CloudFront를 뒀나', t:'지금 오리진은 origin.assac.cloud이고, HTTPS(443)로 외부 ALB(assac-alb-web)에 붙어요. 커스텀 헤더는 없고 VPC Origin도 이 배포에 연결되어 있지 않아요. CloudFront가 HTTPS 종단·엣지 캐싱·Shield Standard·WAF 연결을 맡지만, 외부 ALB가 internet-facing이라 origin.assac.cloud나 ALB DNS로 직접 들어가면 WAF를 우회할 수 있어요. VPC Origin(assac-vpc-origin → 내부 ALB 80) 리소스는 만들어져 있지만 배포 오리진으로는 쓰이지 않아요.'},
-        {h:'왜 캐시 정책이 오리진 지시 기준인가(UseOriginCacheControlHeaders)', t:'PetClinic은 JSP로 매 요청마다 동적으로 렌더링되는 페이지예요. 기본 TTL을 길게 잡으면 방금 등록한 반려동물 정보가 다른 사용자에게 옛날 상태로 캐시되어 보일 수 있어요. 그래서 캐싱 여부·기간을 오리진(WAS)이 응답 헤더로 직접 판단하게 맡겼어요 — 정적 리소스는 캐시하고 동적 페이지는 캐시 안 하는 식으로 서버가 통제해요.'},
-        {h:'왜 GET~DELETE 전체 메서드를 허용했나', t:'CloudFront는 기본적으로 GET/HEAD만 캐시 대상으로 허용하는데, PetClinic은 반려동물 등록·수정 폼에서 POST/PUT을 써요. 이 메서드들을 막으면 CloudFront를 거치는 순간 쓰기 요청이 전부 실패해서, 전체 메서드를 오리진으로 통과시키도록 열어뒀어요.'},
-        {h:'왜 인증서가 us-east-1인가', t:'AWS 규칙이에요. CloudFront는 전세계 엣지에 배포되는 글로벌 서비스라, 다른 리전 인증서를 받지 않고 반드시 us-east-1(버지니아 북부)의 ACM 인증서만 사용할 수 있어요.'},
-        {h:'왜 PriceClass_All인가 (모든 엣지 로케이션 사용)', t:'PriceClass_100/200은 북미·유럽 등 일부 저가 리전 엣지만 쓰고, 아시아·남미 등은 제외돼서 그 지역 사용자는 더 먼 엣지로 우회해 지연이 늘어요. 사용자층이 국내로 한정된 초기 단계라 PriceClass_200(아시아 포함) 정도로도 충분할 수 있지만, 팀 프로젝트 규모의 트래픽에서는 전체 리전 간 요금 차이가 미미해서 지역 제약 없이 All로 설정했어요 — 트래픽이 크게 늘면 실제 사용자 분포를 보고 좁히는 걸 검토할 지점이에요.'},
-        {h:'기각한 대안 — S3 정적 호스팅 + API 서버 분리', t:'프론트를 완전히 정적으로 분리해서 S3+CloudFront로 서빙하고 API만 백엔드로 호출하는 SPA 구조도 고려할 수 있어요. 하지만 PetClinic은 JSP 기반 서버사이드 렌더링(SSR) 구조라 화면 자체가 서버에서 동적으로 생성돼요. 이 구조를 SPA로 바꾸려면 프론트를 통째로 재작성해야 해서, 기존 구조를 유지한 채 CloudFront를 리버스 프록시+CDN 용도로만 쓰는 지금 방식이 현실적이었어요.'}
-      ], tags:['ACM us-east-1','캐시 정책: UseOriginCacheControlHeaders'] },
-
-    waf:{ kicker:'EDGE / SECURITY', title:'WAF', config:'CloudFront에 연결, 기본 동작 Allow, 규칙 3종(우선순위순, 총 904 WCU)', why:'요청이 오리진(ALB)에 닿기 전에 공격 트래픽을 걸러내는 1차 방어선이에요.',
-      points:[
-        {h:'왜 기본 동작이 Block이 아니라 Allow인가', t:'WAF는 "명시적으로 걸러낼 패턴"만 규칙으로 등록하고, 나머지 정상 트래픽은 그대로 통과시키는 게 기본 철학이에요. 기본을 Block으로 하면 화이트리스트를 일일이 관리해야 해서 실무적이지 않고, 정상 사용자 요청까지 막을 위험이 커요.'},
-        {h:'왜 CommonRuleSet을 첫 번째로 뒀나', t:'XSS, 잘못된 호스트 헤더, 크기가 비정상적인 요청 등 웹 애플리케이션 전반에 통하는 공격 패턴을 걸러내요. 가장 넓은 범위의 관리형 규칙이라 우선순위 0으로 제일 먼저 평가해요.'},
-        {h:'왜 SQLiRuleSet을 따로 추가했나', t:'PetClinic은 JPA/JDBC로 MySQL을 직접 쓰는 앱이라, SQL Injection이 실제로 유효한 공격 경로예요. CommonRuleSet에도 일부 포함되지만, DB를 쓰는 앱이라는 특성 때문에 전용 규칙셋을 별도로 추가해서 탐지력을 높였어요.'},
-        {h:'왜 RateLimit을 IP당 5분·1000건으로 잡았나', t:'PetClinic은 페이지마다 CSS·JS·이미지를 같이 받기 때문에, 정상 사용자도 새로고침을 몇 번 하면 요청 수가 금방 늘어요. 5분에 100건은 그 정적 요청까지 합치면 정상 사용에도 걸릴 수 있어서, 임계값을 1000건으로 뒀어요. 그 이상이면 크롤러·무차별 대입·DoS성 트래픽일 가능성이 높다고 보고 막아요. 부하 테스트용으로 x-load-test 헤더가 정해진 값이면 이 집계에서 빠지게 해 두었어요.'},
-        {h:'왜 규칙 순서(우선순위)가 Common → SQLi → RateLimit인가', t:'WAF는 우선순위 낮은 숫자부터 순서대로 평가하고, Block 판정이 나면 그 즉시 뒤 규칙은 평가하지 않아요. 계산 비용이 상대적으로 낮고 광범위한 CommonRuleSet을 가장 먼저 평가해서 명백한 공격은 빨리 걸러내고, 그다음 더 구체적인 SQLi를 보고, 마지막에 요청 빈도라는 별개 축을 보는 RateLimit을 두는 게 논리적인 순서고, 불필요한 뒤쪽 규칙 평가를 줄여 처리 비용도 아껴요.'},
-        {h:'WCU 예산은 얼마나 남았나', t:'현재 사용 중인 WCU(Web ACL Capacity Unit)는 904이고, WAF WebACL의 기본 한도는 1,500 WCU예요. 아직 약 600 WCU의 여유가 있어서, 향후 봇 관리(Bot Control)나 지역 차단(Geo-blocking) 같은 규칙을 추가로 붙일 여력이 있다는 뜻이에요. 이 여유치를 계속 확인해가며 규칙을 늘려야, 한도를 넘겨 규칙 추가가 막히는 상황을 피할 수 있어요.'}
-      ], tags:['CommonRuleSet — XSS 등 일반 웹 공격','SQLiRuleSet — DB 쓰는 앱이라 SQL 인젝션 방어','RateLimit — IP당 5분 1000건 초과 시 Block(DoS 완화)'], extra:'차단 로그는 CloudWatch Logs에 쌓이고, BLOCK이 발생하면 Lambda가 Discord로 실시간 알림을 보내요. 최근 7일 차단 0건.' },
-
-    alb_ext:{ kicker:'COMPUTE', title:'외부 ALB (assac-alb-web)', config:'internet-facing, 리스너 443(HTTPS) → Web 대상 그룹 80, TLS ELBSecurityPolicy-TLS13-1-2-Res-PQ-2025-09, public 서브넷 2곳, cross-zone, HTTP/2, 액세스 로그 꺼짐, 등록 해제 지연 300초', why:'CloudFront 오리진(origin.assac.cloud)이 HTTPS로 붙는 웹 계층 입구예요. 대상은 Apache(Web ASG) 80번이고, 공인 IP가 있어서 origin 도메인이나 ALB DNS로 WAF를 건너뛸 수 있어요.',
-      points:[
-        {h:'왜 내부 ALB와 따로 뒀나', t:'이 ALB는 바깥에서 들어온 HTTPS를 웹 계층(Apache 80)으로 받는 역할만 해요. 앱(WAS)으로 가는 분산은 내부 ALB가 80에서 받아 8080으로 넘겨요. 입구와 앱 로드밸런서를 나누면, 웹 서버를 교체하거나 WAS만 스케일해도 서로의 대상 그룹·헬스체크를 건드리지 않아요.'},
-        {h:'왜 443만 받고 80으로 넘기나', t:'리스너는 443 하나예요. 80 리스너도, 8080 대상 그룹도 없어요. CloudFront가 origin.assac.cloud로 HTTPS만 보내고, ALB가 TLS를 끝낸 뒤 Apache 80으로 전달해요. 동적 요청은 Apache가 내부 ALB 80으로 다시 넘깁니다.'},
-        {h:'왜 internet-facing인가', t:'스킴이 internet-facing이고 보안그룹은 443을 0.0.0.0/0에 열어 두었어요. origin.assac.cloud A 별칭이 이 ALB를 가리켜요. internal로 숨기려면 배포에 VPC Origin을 연결해야 하는데, 만들어 둔 assac-vpc-origin은 내부 ALB를 가리킬 뿐 이 CloudFront 배포의 오리진으로는 쓰이지 않아요.'}
-      ] },
-
-    alb_int:{ kicker:'COMPUTE', title:'내부 ALB (assac-alb-internal)', config:'internal, 리스너 80 → WAS 대상 그룹 8080, public 서브넷 2곳, cross-zone, HTTP/2, 헬스체크 30초·정상 5회·비정상 2회, 등록 해제 지연 60초, 액세스 로그 → assac-logs-2777(14일)', why:'Apache가 리버스 프록시로 넘긴 동적 요청을 두 AZ의 PetClinic(WAS) 8080으로 나눠 보내는 로드밸런서예요. 보안그룹은 Web SG와 CloudFront VPC Origins 서비스 SG의 80만 허용해요.',
-      points:[
-        {h:'왜 리스너는 80이고 대상은 8080인가', t:'PetClinic(Jetty)이 듣는 포트가 8080이에요. 내부 ALB 자신은 80을 받고 대상 그룹 assac-tg-was의 8080으로 전달해요. 인바운드는 Web 보안그룹과 CloudFront VPC Origins 서비스 보안그룹뿐이라, 인터넷에서 이 ALB로 바로 들어오지는 않아요.'},
-        {h:'왜 cross-zone 로드밸런싱을 켰나', t:'꺼져있으면 각 AZ의 ALB 노드가 자기 AZ에 있는 타겟에게만 트래픽을 보내요. 지금처럼 AZ마다 WAS가 1대씩이면, 특정 AZ에 요청이 몰릴 때 다른 AZ의 여유 있는 인스턴스를 못 써서 부하가 불균등해져요. cross-zone을 켜면 AZ 경계 없이 모든 healthy 타겟에 고르게 분산돼요.'},
-        {h:'왜 헬스체크 간격을 30초·정상 5회로 뒀나', t:'너무 자주(예: 5초) 체크하면 그 자체가 WAS에 부하를 주고, 너무 뜸하면(예: 2분) 장애 인스턴스가 오래 트래픽을 받아요. 30초·5회 연속 성공(=2분 30초 확인 시간)은 일시적 지연과 진짜 장애를 구분할 정도의 균형점이에요.'},
-        {h:'왜 등록 해제 지연을 300초→60초로 줄였나', t:'배포나 스케일 인으로 인스턴스를 뺄 때, ALB는 이 시간 동안 기존 연결이 끝나길 기다려요. 기본값 300초를 그대로 두면 배포 한 번에 인스턴스 하나 빼는 데만 5분이 걸려서, 여러 대를 순차 교체하는 롤링 배포 전체가 느려져요. PetClinic 요청은 대부분 수 초 안에 끝나는 짧은 트랜잭션이라, 60초면 기존 요청을 마무리하면서도 배포 속도를 앞당길 수 있었어요.'},
-        {h:'대상 그룹 Deregistration Delay와 애플리케이션 특성의 관계', t:'PetClinic에 장시간 걸리는 요청(대용량 파일 업로드, 긴 리포트 생성)이 있었다면 60초는 그 요청을 강제로 끊을 위험이 있어요. 이 값을 60초로 낮추기 전에, 애플리케이션의 최대 요청 처리 시간이 이보다 짧다는 걸 확인한 설정이에요.'}
-      ] },
-
-    was:{ kicker:'COMPUTE', title:'ASG — WAS (2대)', config:'Min 2 / Max 6, t3.medium(2vCPU·4GB), gp3 20GB(3000 IOPS), ELB 헬스체크(유예 300초), 목표 추적 스케일링(평균 CPU 70%)', why:'최소 2대를 두 AZ에 나눠 배치해 한쪽이 죽어도 서비스가 유지돼요. ELB 헬스체크라 앱 프로세스가 죽으면 인스턴스 자체를 교체해요.',
-      points:[
-        {h:'왜 t3.medium인가 (인스턴스 유형)', t:'JVM 힙(약 1.5~2GB) + Jetty + Docker 데몬 오버헤드 + OS(약 0.5GB)를 합치면 최소 3GB는 필요해서, 한 단계 아래인 t3.small(2GB)은 스왑이 나기 쉬워요. t3.medium(4GB)이 실사용 메모리에 가장 근접한 사이즈예요. vCPU 2개는 Jetty 스레드풀 + Docker 컨테이너 동시 처리에 필요한 최소치고요.'},
-        {h:'왜 t 계열(버스터블)인가', t:'PetClinic은 상시 고부하가 아니라 요청이 몰릴 때만 CPU가 튀는 패턴이에요. m5·c5 같은 고정 성능 인스턴스는 평소 유휴 자원을 그대로 돈 주고 놀리는 셈이라, 베이스라인은 낮고 크레딧으로 순간 버스트를 흡수하는 t3가 비용 대비 합리적이에요. Unlimited 모드로 크레딧 소진 시에도 서비스 저하 없이 초과 과금만 되도록 설정했어요.'},
-        {h:'왜 gp3 20GB인가 (볼륨)', t:'gp2는 용량에 비례해서 IOPS가 정해지는데(20GB면 100 IOPS 수준), gp3는 용량과 무관하게 기본 3,000 IOPS·125MB/s 처리량을 보장하면서 gp2보다 20% 저렴해요. 20GB는 OS + Docker 이미지 레이어 + 로그를 감안한 최소 여유치로, 앱 자체는 상태를 갖지 않는(stateless) 컨테이너라 큰 용량이 필요 없어요.'},
-        {h:'왜 ASG(오토스케일링)인가', t:'EC2 인스턴스를 고정 대수로 두면 트래픽이 몰릴 때 응답 지연이 생기고, 평소엔 과대 프로비저닝이 돼요. ASG는 CPU 70% 기준으로 자동으로 늘리고 줄여서, 사람이 지켜보지 않아도 수요에 맞춰 비용과 성능 균형을 맞춰요. Min 2는 고가용성(AZ당 1대) 하한선이고, Max 6은 예산 안에서 감당 가능한 상한선이에요.'},
-        {h:'왜 목표값이 70%지 50%나 90%가 아닌가', t:'목표 추적 스케일링은 목표치보다 낮으면 서서히 줄이고, 넘으면 새 인스턴스를 추가해요. 50%로 잡으면 아직 여유가 많은데도 자주 스케일 아웃해서 비용이 늘고, 90%로 잡으면 새 인스턴스가 뜨는 데 걸리는 시간(부팅+헬스체크 통과, 약 2~3분) 동안 기존 인스턴스가 거의 포화 상태로 버텨야 해서 응답 지연 위험이 커요. 70%는 스케일 아웃 결정을 내릴 시점에 아직 30%의 여유 버퍼가 있어서, 새 인스턴스가 준비될 때까지 기존 인스턴스가 감당할 시간을 벌어줘요.'},
-        {h:'왜 Max를 6으로 잡았나 (무한정 늘리지 않고)', t:'Max에 상한이 없으면 오작동(무한 루프, 잘못된 헬스체크 설정)으로 스케일 아웃이 폭주해도 자동으로 멈추질 않아서 비용이 통제 불능이 돼요. Max 6은 "이 이상 트래픽이 몰리면 사람이 개입해서 아키텍처 자체를 재검토해야 하는 수준"이라는 의미의 안전판이에요. 팀 예산(월 235달러 Budgets 알림)과 t3.medium 단가를 역산해서 감당 가능한 상한으로 정했어요.'},
-        {h:'기각한 대안 — Scheduled Scaling(시간대별 고정 스케줄)', t:'트래픽 패턴이 예측 가능하면 "평일 9시엔 4대, 새벽엔 2대"처럼 스케줄로 미리 늘려두는 방법도 있어요. 하지만 이 프로젝트는 아직 실사용 트래픽 패턴 데이터가 부족해서, 예측 기반 스케줄보다 실측 CPU에 반응하는 목표 추적 방식이 더 안전하다고 판단했어요.'}
-      ],
-      tags:['IMDSv2 필수(SSRF 방어)','커스텀 AMI로 빠른 스케일 아웃'] },
-
-    docker:{ kicker:'COMPUTE / PACKAGING', title:'Docker 컨테이너화', config:'Multi-stage Dockerfile — 빌드 스테이지(Maven+JDK)와 런타임 스테이지(JRE+Jetty) 분리, ECR은 assac-ecr(WAS)와 assac-ecr-web 두 개', why:'"내 컴퓨터에선 됐는데" 문제를 근본적으로 없애기 위해서예요. 애플리케이션 + 실행 환경(JRE 버전, Jetty 설정, OS 라이브러리)을 하나의 불변 아티팩트로 묶어서, 로컬·CI·운영 서버가 완전히 같은 걸 실행하게 만들어요.',
-      points:[
-        {h:'왜 EC2에 직접 배포하지 않고 컨테이너로 감쌌나', t:'직접 배포하면 서버마다 JDK 버전, 환경변수, 파일 경로가 미묘하게 달라질 수 있어요. 컨테이너는 이 모든 걸 이미지 안에 고정해서, 어떤 인스턴스에서 띄워도 100% 같은 동작을 보장해요. 새 인스턴스가 ASG로 추가될 때도 "이미지 pull → 실행"만 하면 돼서 부팅이 빨라요.'},
-        {h:'왜 Multi-stage 빌드인가', t:'Maven·JDK 전체를 그대로 이미지에 넣으면 수백MB가 낭비돼요. 빌드는 별도 스테이지에서 하고, 최종 이미지엔 컴파일된 결과물과 JRE(전체 JDK 아님)만 남겨서 이미지 용량을 줄이고 공격 표면(불필요한 빌드 도구)도 없앴어요.'},
-        {h:'왜 ECR인가', t:'VPC 안에서 사설 네트워크로 이미지를 주고받을 수 있고, IAM으로 push/pull 권한을 세밀하게 제어할 수 있어서예요. Docker Hub 같은 퍼블릭 레지스트리보다 속도·보안 면에서 유리해요.'},
-        {h:'롤백이 쉬워지는 이유', t:'이미지에 커밋 해시 태그를 붙여두면, 문제가 생겼을 때 "이전 태그로 롤백"이 곧바로 이전 코드+환경 전체로 되돌아가는 걸 의미해요. 서버에 설치된 패키지를 하나씩 되돌릴 필요가 없어요.'},
-        {h:'레이어 캐싱을 어떻게 활용했나', t:'Dockerfile에서 pom.xml만 먼저 COPY해서 의존성을 받고, 그 다음에 소스 코드를 COPY하는 순서로 짜면, 소스만 바뀐 커밋에서는 Maven 의존성 다운로드 레이어가 캐시에서 재사용돼요. 순서를 반대로(소스 먼저) 하면 코드 한 줄만 바뀌어도 의존성을 매번 새로 받아서 빌드 시간이 크게 늘어나는데, 이걸 방지하려고 레이어 순서를 의도적으로 배치했어요.'},
-        {h:'기각한 대안 — EC2에 JAR만 올려서 직접 실행(컨테이너 없이)', t:'Docker 없이 JAR 파일만 scp로 옮기고 systemd로 직접 실행하는 더 단순한 방법도 있어요. 하지만 이러면 JRE 버전이 인스턴스마다 다를 수 있고, AMI를 새로 구울 때마다 JRE·Jetty 설정을 수동으로 다시 맞춰야 해요. 컨테이너는 이 환경 자체를 이미지에 고정해서 "AMI가 뭐든 상관없이 Docker만 있으면 동일하게 뜬다"를 보장해요.'}
-      ] },
-
-    asg_alert:{ kicker:'ALERT', title:'ASG 이벤트 알림', config:'인스턴스 생성/종료/오류 발생 → SNS 토픽 발행 → Lambda 트리거 → Discord 웹훅 전송 (+이메일 구독)', why:'인프라팀이 콘솔을 계속 들여다보지 않아도, 인스턴스가 교체되는 순간 Discord 채널로 바로 알 수 있게 하려고요.',
-      points:[
-        {h:'왜 SNS를 중간에 뒀나 (Lambda를 바로 안 부르고)', t:'ASG 이벤트를 Lambda 하나에만 직접 연결하면, 나중에 알림 채널을 추가하고 싶을 때(예: 이메일도 같이 받고 싶다) ASG 설정 자체를 건드려야 해요. SNS를 중간에 두면 "이벤트 발행"과 "누가 받을지"가 분리돼서, 구독자를 추가·제거해도 ASG 쪽 설정은 그대로 둘 수 있어요. 실제로 지금 Lambda(Discord용)와 이메일 구독자를 동시에 붙여둔 것도 이 구조 덕분이에요.'},
-        {h:'왜 Discord로 보내나', t:'팀이 실시간으로 보는 채널이 Discord라서예요. 이메일은 확인이 늦어질 수 있지만, Discord는 알림이 뜨는 즉시 팀원 전체가 볼 수 있어서 장애 대응 속도가 빨라져요.'}
-      ] },
-
-    rds:{ kicker:'DATA', title:'RDS — MySQL 8.4', config:'Multi-AZ(주 2c / 대기 2a), db.t3.small, gp3 20GB(최대 1,000GB 자동확장), KMS 암호화, 백업 7일 보존(03:29 KST), 유지보수 월요일 01:36 KST', why:'8.4는 장기 지원(LTS) 버전이에요. Multi-AZ는 동기 복제되는 대기 DB를 하나 더 두는 거라, 주 AZ에 장애가 나면 자동으로 전환돼요.',
-      points:[
-        {h:'왜 RDS(관리형)이고 EC2에 직접 MySQL을 안 깔았나', t:'직접 설치하면 백업, 패치, 장애 시 페일오버를 전부 팀이 스크립트로 만들어야 해요. RDS는 이걸 전부 관리형으로 제공해서, 팀 리소스를 인프라 유지보수 대신 애플리케이션에 집중할 수 있게 해줘요.'},
-        {h:'왜 Multi-AZ인가 (Read Replica가 아니라)', t:'Read Replica는 비동기 복제라 장애 시 최신 데이터 일부가 유실될 수 있고, 수동으로 승격(promote)해야 해요. Multi-AZ의 대기 인스턴스는 동기 복제라 데이터 유실이 없고, 주 인스턴스 장애 시 AWS가 자동으로 전환해줘서 사람 개입 없이 수 분 내 복구돼요. 이 프로젝트는 자동 복구가 더 중요해서 Multi-AZ를 골랐어요.'},
-        {h:'왜 db.t3.small인가', t:'현재 트래픽 규모(팀 프로젝트 수준)에서 db.m5 같은 고정 성능 인스턴스는 과도한 스펙이에요. t3는 버스터블이라 평소엔 저렴하게 운영하다가 쿼리가 몰릴 때 크레딧으로 순간 성능을 낼 수 있어서, 지금 규모엔 t3.small이 비용 대비 합리적이에요.'},
-        {h:'왜 gp3 20GB + 최대 1,000GB 자동 확장인가', t:'처음부터 큰 용량을 예약해두면 안 쓰는 공간에 비용을 내는 셈이라 20GB로 작게 시작했어요. 대신 자동 확장을 최대 1,000GB로 열어둬서, 데이터가 늘어나도 디스크가 꽉 차서 서비스가 멈추는 사고를 미리 방지했어요.'},
-        {h:'왜 백업·유지보수를 새벽 시간에 몰았나', t:'백업 스냅샷과 패치 작업은 순간적으로 I/O 부하를 유발할 수 있어요. 실사용자가 거의 없는 새벽 시간대(KST 기준 새벽 1~3시)로 맞춰서, 이 작업이 실제 서비스 응답 속도에 영향을 주지 않게 했어요.'},
-        {h:'왜 강화 모니터링을 15초 간격으로 뒀나 (기본 60초 대신)', t:'RDS 기본 CloudWatch 지표는 1분 단위라, CPU나 커넥션 수가 짧은 순간(수십 초) 튀었다 가라앉는 패턴은 그래프에서 뭉개져 안 보여요. 15초 간격의 강화 모니터링(Enhanced Monitoring)을 쓰면 OS 레벨 지표까지 더 세밀하게 잡혀서, 실제로 저희가 겪었던 DB 커넥션 0건 장애(9/28 23:15) 같은 사고를 원인 분석할 때 정확한 타임라인을 재구성하는 데 이 세밀한 지표가 결정적인 근거가 됐어요.'},
-        {h:'기각한 대안 — Aurora MySQL', t:'Aurora는 스토리지 자동 확장, 더 빠른 페일오버, 읽기 복제본 확장이 쉬운 장점이 있어요. 하지만 일반 RDS MySQL보다 최소 비용이 더 높고, 이 프로젝트 규모에서는 그 확장성이 당장 필요하지 않아서, 비용 대비 합리적인 표준 RDS MySQL을 택했어요. 트래픽이 크게 늘어 읽기 부하 분산이나 스토리지 자동 확장이 중요해지면 Aurora 전환을 재검토할 지점이에요.'}
-      ], tags:['error+slowquery 로그 → CloudWatch','강화 모니터링 15초','접근은 WAS·Lambda의 3306만 허용'] },
-
-    secrets:{ kicker:'DATA / SECURITY', title:'Secrets Manager', config:'시크릿 assac/rds/petclinic, 하루 1회 자동 로테이션, 로테이션 Lambda는 db 서브넷에 위치', why:'코드나 Docker 이미지 어디에도 DB 비밀번호가 없어요. 앱이 aws-secretsmanager-jdbc 드라이버로 실행 시점에 Secrets Manager에서 직접 비밀번호를 가져와요.',
-      points:[
-        {h:'왜 환경변수나 pom.xml에 비밀번호를 그냥 안 넣었나', t:'환경변수나 빌드 설정에 평문으로 넣으면 Docker 이미지, Git 히스토리, docker inspect 결과 등 여러 곳에 비밀번호가 그대로 남아요. 실제로 이 프로젝트에서도 초기엔 평문 비밀번호가 systemd 환경변수에 노출된 적이 있었고, 이걸 근본적으로 없애기 위해 전환했어요.'},
-        {h:'왜 전용 JDBC 드라이버를 쓰나 (앱 코드에서 직접 API 호출 대신)', t:'앱 코드에서 매번 Secrets Manager API를 호출하도록 직접 구현하면, 캐싱·재시도·커넥션 갱신 로직을 전부 손으로 짜야 해요. aws-secretsmanager-jdbc 드라이버는 JDBC URL 프리픽스만 바꾸면 이 모든 걸 대신 처리해줘서, 애플리케이션 코드는 DB 자격증명을 신경 쓸 필요가 전혀 없어요.'},
-        {h:'왜 하루 1회 로테이션인가', t:'너무 자주 로테이션하면 로테이션 도중 짧은 접속 실패 가능성이 늘고 Lambda 실행 비용도 늘어요. 반대로 너무 뜸하면 비밀번호가 유출됐을 때 노출 시간이 길어져요. 하루 1회는 "노출되어도 최대 24시간 안에 무효화된다"는 보안 수준과 운영 부담 사이의 절충점이에요.'},
-        {h:'왜 single-user 로테이션 전략인가 (alternating 대신)', t:'AWS Secrets Manager의 MySQL 로테이션은 두 가지 전략이 있어요 — single-user는 계정 하나의 비밀번호를 그 자리에서 바꾸고, alternating은 두 개의 계정을 번갈아 활성화해서 로테이션 중에도 이전 자격증명이 잠깐 동시에 유효하게 유지돼요. single-user는 구현이 단순하지만 로테이션 순간에 극히 짧은 접속 실패 가능성이 있고, alternating은 무중단이 더 보장되지만 계정을 2개 관리해야 해서 복잡도가 늘어요. 지금은 단순성을 택했는데, 이게 바로 "약점"으로 스스로 인정한 부분이고, 무중단이 더 중요해지면 alternating으로 바꾸는 게 개선 방향이에요.'},
-        {h:'로테이션 Lambda가 왜 db 서브넷에 있나 (was나 public이 아니라)', t:'로테이션 Lambda는 RDS에 직접 접속해서 비밀번호를 바꾸는 작업을 해요. RDS가 db 서브넷에만 있고 그 서브넷 SG가 특정 소스만 3306을 허용하니까, Lambda도 같은 db 서브넷에 둬서 네트워크 경로가 가장 짧고 SG 규칙도 가장 좁게 유지할 수 있어요. was 서브넷에 뒀다면 db SG에 was 서브넷 전체 대역을 허용하는 식으로 규칙이 더 느슨해졌을 거예요.'}
-      ] },
-
-    nat:{ kicker:'NETWORK', title:'NAT 게이트웨이', config:'public-subnet-a(2a)에 1개 + EIP (7일 송신량 약 1.29GB)', why:'Web·WAS가 ECR 이미지를 pull하거나 CloudWatch로 로그를 보내는 등, 나가는 통신만 하도록 만든 통로예요.',
-      points:[
-        {h:'왜 WAS를 private 서브넷에 두고 NAT를 거치게 했나', t:'WAS에 공인 IP를 직접 주면 인터넷에서 WAS로 직접 접근을 시도할 수 있는 경로가 생겨요. private 서브넷 + NAT 구조는 "나가는 요청은 되지만 밖에서 들어오는 연결은 원천 차단"이라, 공격 표면을 줄이는 표준적인 방식이에요.'},
-        {h:'왜 1개만 두고 AZ마다 안 뒀나 (트레이드오프를 인지한 선택)', t:'AZ마다 NAT를 두면 가용성은 올라가지만 NAT Gateway 자체가 시간당 과금 + 데이터 처리량 과금이 있어서 비용이 거의 2배가 돼요. 실측한 7일 송신량이 약 1.29GB로 적어서, 지금 트래픽 규모에서는 이중화의 이득보다 비용 절감이 크다고 판단했어요. Web·WAS 라우팅 테이블이 둘 다 이 NAT 하나를 쓰므로, 2a NAT가 죽으면 2c의 Web·WAS 외부 통신(ECR pull, 로그 전송)이 끊깁니다. 트래픽이 늘면 AZ당 1개로 늘리는 걸 개선안으로 두고 있어요.'},
-        {h:'이 약점이 실제로 어떤 장애로 이어지나', t:'2a NAT가 죽으면 2c의 Web·WAS는 인터넷으로 나가는 경로가 완전히 끊겨요. 구체적으로는 새 배포 시 ECR 이미지 pull이 실패해서 그 AZ만 배포가 멈추고, CloudWatch Agent의 로그 전송도 끊겨서 그 시점의 관측 가능성(observability)까지 함께 잃어요. 다만 이미 떠 있는 인스턴스가 처리 중인 사용자 요청 자체(ALB↔Web↔내부 ALB↔WAS↔RDS)는 NAT와 무관해서 즉시 서비스 중단으로 이어지진 않아요.'},
-        {h:'기각한 대안 — NAT Instance(EC2 기반)', t:'NAT Gateway 대신 저렴한 EC2에 NAT 역할을 시키는 NAT Instance 방식도 있어요. 초기 비용은 더 싸지만, 관리형이 아니라서 장애 시 직접 복구해야 하고 처리량 한계도 인스턴스 사양에 종속돼요. 관리 부담을 줄이는 게 우선이라 관리형인 NAT Gateway를 택했어요.'}
-      ] },
-
-    bastion:{ kicker:'NETWORK', title:'Bastion', config:'t3.micro, public-subnet-a, 키페어 인증', why:'WAS는 전부 private 서브넷에 있어서 외부에서 직접 SSH가 안 돼요. 관리 작업이 필요할 때만 이 서버를 거쳐 들어가는 용도예요.',
-      points:[
-        {h:'왜 t3.micro인가', t:'Bastion은 SSH 세션 하나 중계하는 용도라 CPU·메모리를 거의 안 써요. 가장 작은 상시 과금 인스턴스인 t3.micro로도 충분하고, 더 큰 인스턴스를 쓰는 건 예산 낭비예요.'},
-        {h:'왜 WAS에 직접 SSH 안 하고 Bastion을 거치나', t:'WAS 각각에 SSH 포트를 열어두면 관리 접근점이 인스턴스 수만큼 늘어나서 공격 표면이 커져요. Bastion 하나로 진입점을 모으면, 그 한 곳만 집중적으로 모니터링·통제하면 되고, WAS SG에는 "Bastion SG에서만 22 허용"이라는 좁은 규칙 하나만 있으면 돼요.'},
-        {h:'현재 약점과 왜 그렇게 됐는지', t:'지금 Bastion SG는 22번만 0.0.0.0/0(전체 인터넷)에 열려 있어요. 80번은 열려 있지 않아요. 프로덕션이라면 팀 고정 IP 대역으로 좁히거나, 아예 포트를 안 열고 AWS SSM Session Manager로 전환하는 게 맞아요. SSM은 IAM 권한만 있으면 포트를 열 필요가 없어요.'}
-      ], tags:['⚠ 22 포트가 0.0.0.0/0에 열려있음 — 팀 IP 제한 또는 SSM 전환 검토 중'] },
-
-    igw:{ kicker:'NETWORK', title:'인터넷 게이트웨이', config:'VPC에 1개 attach', why:'public 서브넷(NAT, Bastion)이 인터넷과 통신하기 위한 관문이에요.',
-      points:[
-        {h:'왜 IGW가 public 서브넷에만 영향을 주나', t:'IGW 자체는 VPC 전체에 붙지만, 실제로 어느 서브넷이 인터넷에 나갈 수 있는지는 라우팅 테이블이 결정해요. public 라우팅 테이블만 "0.0.0.0/0 → IGW" 경로를 갖고 있고, web·was는 NAT, db는 그 경로가 없어요. IGW가 있어도 private 서브넷은 인터넷과 직접 통신할 수 없어요.'}
-      ] },
-
-    vpce:{ kicker:'NETWORK / SECURITY', title:'VPC 엔드포인트 — Secrets Manager', config:'Interface 타입, db 서브넷 2곳에 위치, Private DNS 활성화', why:'db 서브넷엔 인터넷 경로가 아예 없는데, 로테이션 Lambda와 WAS가 Secrets Manager API는 호출해야 해서 만들었어요.',
-      points:[
-        {h:'NAT를 거쳐 인터넷으로 나가면 안 됐나', t:'기술적으로는 NAT를 거쳐 Secrets Manager의 퍼블릭 엔드포인트를 호출할 수도 있어요. 하지만 그러면 DB 비밀번호를 다루는 트래픽이 인터넷 구간을 지나가게 되고, was 서브넷의 NAT까지 라우팅이 필요해서 db 서브넷의 "인터넷 완전 차단" 원칙이 깨져요. Interface 엔드포인트는 AWS 내부망(PrivateLink)으로만 통신해서 이 원칙을 유지하면서도 API 호출을 가능하게 해요.'},
-        {h:'왜 Private DNS를 켰나', t:'꺼두면 코드에서 실제 AWS 엔드포인트 도메인 대신 VPC 엔드포인트 전용 도메인을 명시적으로 호출하도록 바꿔야 해요. Private DNS를 켜면 원래 쓰던 secretsmanager.ap-northeast-2.amazonaws.com 주소 그대로 호출해도, DNS가 자동으로 VPC 엔드포인트 IP로 응답해줘서 애플리케이션 코드를 전혀 안 바꿔도 돼요.'},
-        {h:'현재 약점', t:'엔드포인트 정책이 Principal *, Action *로 사실상 제한이 없어요. 이건 "VPC 안에서 이 엔드포인트에 닿을 수 있는 누구나, 무슨 Secrets Manager 액션이든" 허용한다는 뜻이라, 최소권한 원칙에는 어긋나요. 실제로 필요한 건 로테이션 Lambda와 WAS 역할의 GetSecretValue 정도라, 정책을 그 수준으로 좁히는 게 개선 과제예요.'},
-        {h:'왜 하필 db 서브넷 2곳에 엔드포인트를 뒀나', t:'로테이션 Lambda가 db 서브넷 두 AZ에 있어서 그 서브넷에서 Secrets Manager를 호출해야 하고, WAS도 이 엔드포인트를 호출해요. 엔드포인트를 was 서브넷에만 두면 db 서브넷의 Lambda가 못 쓰고, 반대도 마찬가지라 db 서브넷(두 AZ)에 뒀어요. 엔드포인트 보안그룹은 443을 WAS 보안그룹과 로테이션 Lambda 보안그룹에서만 받아요.'},
-        {h:'이전에 실제로 겪었던 장애와의 연결', t:'이 VPC 엔드포인트로 가는 경로에 보안그룹 인바운드 규칙이 빠져있던 시기가 있었는데, 그때는 WAS가 Secrets Manager를 아예 호출할 수 없어 앱 기동 자체가 실패했어요. 지금은 SG가 고쳐져 있지만, 이 사례가 "엔드포인트를 만드는 것"과 "그 엔드포인트에 실제로 닿을 수 있게 SG를 여는 것"은 별개의 설정이라는 걸 보여준 실제 사고였어요.'}
-      ], tags:['⚠ 정책이 Principal *, Action * — 최소권한으로 조이는 게 권장됨'] },
-
-    route_table:{ kicker:'NETWORK', title:'라우팅 테이블 (4개)', config:'public → IGW / web → NAT / was → NAT / db → 경로 없음', why:'계층마다 인터넷 경로를 나눈 구조예요. db 서브넷은 인터넷으로 나가는 경로 자체가 없어서, DB가 뚫려도 밖으로 데이터를 빼낼 방법이 없어요.',
-      points:[
-        {h:'왜 서브넷마다 라우팅 테이블을 다르게 뒀나 (VPC 전체에 하나면 안 됐나)', t:'라우팅 테이블 하나를 VPC 전체가 공유하면, 모든 서브넷이 같은 인터넷 접근 권한을 가져요. 계층마다 필요한 접근 범위가 다른데(public은 양방향, web·was는 나가기만, db는 아예 없음) 이걸 서브넷 단위로 분리해야 "이 계층은 이 정도까지만 나갈 수 있다"를 라우팅 레벨에서 강제할 수 있어요. 보안 그룹이 뚫려도 라우팅 자체가 없으면 통신이 물리적으로 불가능해요.'},
-        {h:'왜 web·was는 IGW가 아니라 NAT로 나가나', t:'IGW로 직접 나가면 인스턴스가 공인 IP를 받아야 해서 인터넷에서 들어오는 경로도 함께 열려요. NAT는 나가는 연결만 허용하고 들어오는 연결은 자동으로 막아요. web과 was는 테이블이 따로지만, 둘 다 2a의 NAT 하나를 가리켜요.'}
-      ] },
-
-    s3:{ kicker:'STORAGE', title:'S3 (3개 버킷)', config:'assac-logs-2777(내부 ALB 액세스 로그, 14일 삭제), assac-cloudtrail-logs-2777, assac-terraform-state — 전부 버전 관리+SSE-S3+퍼블릭 차단', why:'로그와 Terraform state를 인스턴스 수명과 분리해서 보관해요.',
-      points:[
-        {h:'왜 로그를 EC2 디스크가 아니라 S3에 두나', t:'EC2 로컬 디스크는 인스턴스가 ASG로 교체되는 순간 사라져요. S3는 인스턴스 수명과 무관하게 독립적으로 존재하고, 99.999999999%(9가 11개)의 내구성을 제공해서 장애조사나 감사에 필요한 로그를 안전하게 오래 보관할 수 있어요.'},
-        {h:'왜 버킷을 용도별로 나눴나 (하나로 합치지 않고)', t:'용도별로 나누면 버킷마다 보관 기간·접근 권한을 다르게 줄 수 있어요. ALB 로그만 14일 뒤 삭제하고, CloudTrail과 Terraform state는 그 수명 정책을 따르지 않아요. 정적 자산 버킷이나 별도 백업 버킷은 지금 계정에 없어요.'},
-        {h:'왜 버전 관리 + 퍼블릭 차단을 전 버킷에 걸었나', t:'버전 관리는 실수로 파일을 덮어쓰거나 삭제해도 이전 버전으로 복구할 수 있게 해주는 안전장치예요. 퍼블릭 차단은 S3 설정 실수로 로그나 state가 인터넷에 그대로 노출되는 사고를 버킷 설정에서 막아요. 암호화는 세 버킷 모두 SSE-S3(AES256)예요.'},
-        {h:'ALB 로그를 14일만 보관하는 이유와 트레이드오프', t:'액세스 로그가 켜진 건 내부 ALB(assac-alb-internal)이고, 버킷은 assac-logs-2777이에요. 외부 ALB는 액세스 로그가 꺼져 있어요. 14일은 최근 장애를 조사하기엔 충분하지만 장기 트렌드 분석엔 짧은 기간이에요. 외부 ALB 로그가 필요하면 그 ALB의 액세스 로그부터 켜야 해요.'}
-      ] },
-
-    cloudwatch:{ kicker:'OPS', title:'CloudWatch', config:'ALB 5xx ≥5/분, ASG CPU ≥80%(5분 평균), RDS CPU ≥90%(1분×5회) → SNS assac-sns-critical-alert → Lambda → Discord', why:'장애가 나면 사람이 콘솔을 열어보기 전에 자동으로 감지해서 알려주는 체계예요.',
-      points:[
-        {h:'왜 세 가지 알람을 각 계층마다 하나씩 뒀나', t:'ALB 5xx는 "사용자가 실제로 에러를 보고 있다"는 최종 결과 지표고, ASG CPU와 RDS CPU는 그 원인이 될 수 있는 앞단 지표예요. 계층별로 알람을 나눠두면 "지금 문제가 WAS 과부하 때문인지 DB 과부하 때문인지"를 알람 발생 시점에 바로 구분할 수 있어요.'},
-        {h:'왜 5xx는 5/분인데 CPU는 80·90%로 다른가', t:'5xx는 단 한 건이라도 사용자 경험에 직접 영향을 주는 지표라 낮은 절대치(5건)로 민감하게 잡았어요. CPU는 순간적으로 튀었다가 내려가는 게 정상적인 부하 패턴이라, 너무 낮게 잡으면 알람이 계속 울려서 무시하게 되는 "알람 피로"가 생겨요. 그래서 지속적인 고부하를 가리키는 80·90% 수준으로 잡았어요.'},
-        {h:'왜 로그 보관을 30일로 통일했나', t:'CloudWatch Logs는 저장 기간에 비례해서 과금돼요. 장애조사는 보통 최근 며칠~몇 주 내 이슈를 보는 경우가 대부분이라, 30일이면 실무적으로 충분하면서 무기한 보관 대비 비용을 크게 아낄 수 있어요.'},
-        {h:'알람이 SNS를 한 번 거치는 이유(직접 Lambda를 구독하지 않고)', t:'CloudWatch 알람은 SNS 주제를 액션 대상으로 지정하는 구조라, 알람이 Lambda를 직접 아는 게 아니라 SNS라는 매개체만 알아요. 그래서 나중에 Slack이나 PagerDuty 같은 다른 채널을 추가하고 싶으면 SNS에 구독자를 하나 더 붙이면 되고, 알람 설정 자체는 건드릴 필요가 없어요 — ASG 알림과 동일한 팬아웃 설계 원칙이에요.'}
-      ] },
-
-    guardduty:{ kicker:'SECURITY', title:'GuardDuty', config:'CloudTrail, DNS, VPC Flow Logs, S3 데이터 이벤트, EBS 악성코드, RDS 로그인 이상 징후, Lambda 네트워크까지 전부 활성화', why:'침해 지표를 자동으로 탐지하는 위협 탐지 서비스예요.',
-      points:[
-        {h:'왜 WAF만으로는 부족한가', t:'WAF는 "요청 하나하나가 알려진 공격 패턴에 맞는지"를 실시간으로 걸러내는 앞단 방어예요. 반면 GuardDuty는 이미 시스템 안으로 들어온 뒤의 이상행동(비정상 로그인, 알려진 악성 IP와의 통신, 비정상적인 API 호출 패턴)을 CloudTrail·DNS·Flow Log 등 여러 로그를 교차분석해서 탐지해요. 두 개는 방어선의 다른 단계를 담당해서 같이 써야 의미가 있어요.'},
-        {h:'왜 이렇게 많은 데이터 소스를 다 켰나', t:'각 소스가 잡아내는 위협 유형이 달라요 — DNS는 악성 도메인 통신, VPC Flow Logs는 비정상 네트워크 스캔, EBS 악성코드 스캔은 랜섬웨어류, RDS 로그인 이상 징후는 자격증명 탈취 후 DB 접근 시도예요. 하나라도 꺼두면 그 유형의 공격은 탐지 사각지대가 생겨서, 커버리지를 최대화하려고 전부 켰어요.'},
-        {h:'GuardDuty와 CloudTrail의 역할 차이', t:'CloudTrail은 "누가 무엇을 했는지" 사후에 조회 가능한 원시 로그를 남기는 기록계예요. GuardDuty는 그 로그(와 다른 신호들)를 AWS의 위협 인텔리전스와 머신러닝으로 실시간 분석해서 "이상하다"고 능동적으로 판단해 알려주는 탐지 엔진이에요. CloudTrail 없이 GuardDuty는 분석할 원본 데이터가 없어 못 돌아가고, GuardDuty 없이 CloudTrail만 있으면 사고가 난 뒤에야 로그를 뒤져서 알게 돼요 — 사전 탐지와 사후 조사, 두 역할이 상호보완적이에요.'}
-      ] },
-
-    iam:{ kicker:'SECURITY', title:'IAM', config:'담당 영역별 그룹(network/db-security/edge-security/ops), 영역 밖 서비스는 Deny, MFA 필수', why:'한 사람이 전체 권한을 갖지 않도록 직무를 분리했어요.',
-      points:[
-        {h:'왜 Admin 권한을 몰아주지 않고 영역별로 쪼갰나', t:'한 계정이 뚫리면 그 계정이 가진 권한만큼 피해가 나요. 전원이 Admin이면 계정 하나만 유출돼도 전체 인프라가 위험해지지만, 영역별로 쪼개면 DB 담당자 계정이 유출돼도 네트워크나 엣지 설정은 안전해요. 이게 최소권한 원칙(principle of least privilege)이에요.'},
-        {h:'왜 영역 밖 서비스는 명시적으로 Deny하나', t:'Allow만 세밀하게 주고 나머지를 기본값(암묵적 Deny)에 맡기면, 나중에 실수로 광범위한 Allow 정책이 붙었을 때 의도치 않게 권한이 뚫릴 수 있어요. 명시적 Deny는 다른 어떤 Allow보다 우선 적용돼서, "이 영역 밖은 절대 안 된다"를 확실하게 못박는 안전장치예요.'},
-        {h:'왜 Terraform apply를 한 명만 하게 했나', t:'여러 명이 동시에 apply하면 state 충돌이나, 의도치 않은 변경이 겹쳐서 인프라가 예상과 다르게 바뀔 위험이 있어요. plan(조회)까지는 팀원 전원이 확인할 수 있게 열어두되, 실제 반영은 한 명이 책임지고 실행해서 변경 이력을 추적하기 쉽게 했어요.'},
-        {h:'왜 MFA를 필수로 했나', t:'비밀번호만으로는 피싱이나 유출로 뚫릴 가능성이 있어요. MFA(추가 인증 수단)를 강제하면 비밀번호가 유출돼도 공격자가 실제 로그인까지는 하기 어려워져서, 계정 탈취의 마지막 방어선 역할을 해요.'}
-      ] },
-
-    grafana:{ kicker:'OPS', title:'AMP + Managed Grafana', config:'AMP assac-petclinic-amp. Managed Grafana assac-petclinic-grafana는 AWS SSO 인증이지만 워크스페이스 상태가 DELETION_FAILED', why:'인프라·앱 지표를 한 곳에서 팀 전체가 볼 수 있는 대시보드를 만들기 위해서예요. AMP는 남아 있고, Grafana 워크스페이스는 삭제가 실패한 상태예요.',
-      points:[
-        {h:'왜 CloudWatch만으로는 부족했나', t:'CloudWatch는 AWS 리소스(EC2, RDS 등)의 인프라 지표는 잘 보여주지만, 애플리케이션 내부 지표(JVM 힙 사용량, HTTP 요청 응답시간 분포 등)를 세밀하게 시각화하기엔 대시보드 커스터마이징이 제한적이에요. Prometheus + Grafana 조합은 애플리케이션 레벨 지표를 세밀하게 수집·시각화하는 데 특화돼있어서, 인프라는 CloudWatch로, 앱 내부는 Prometheus/Grafana로 역할을 나눴어요.'},
-        {h:'왜 직접 운영하는 Prometheus 서버 대신 AMP(관리형)를 썼나', t:'Prometheus를 직접 EC2에 설치·운영하면 그 서버 자체의 가용성·백업·확장을 팀이 또 관리해야 해요. AMP(Amazon Managed Prometheus)는 이걸 관리형으로 제공해서, 팀은 지표 수집·시각화 로직에만 집중할 수 있어요.'},
-        {h:'왜 IAM Identity Center로 로그인하게 했나', t:'Grafana 대시보드에 별도 계정·비밀번호 체계를 또 만들면 관리 포인트가 늘어나요. 이미 AWS 계정 접근에 쓰는 IAM Identity Center로 통합하면, 인증 수단이 하나로 합쳐져서 관리가 단순해지고 퇴사·역할 변경 시 한 곳에서만 접근을 끊으면 돼요.'}
-      ] },
-
-    cicd:{ kicker:'CI/CD', title:'GitHub Actions', config:'main push → Docker 멀티스테이지 빌드 → ECR push(커밋 해시+latest) → ASG Instance Refresh(최소 50% 유지)', why:'사람이 수동으로 빌드하고 서버에 접속해 배포하는 과정을 없애서, 배포를 빠르고 반복 가능하고 실수 없는 절차로 만들기 위해서예요.',
-      points:[
-        {h:'왜 배포를 자동화했나', t:'수동 배포는 "빌드 → SCP로 파일 전송 → SSH 접속 → 서비스 재시작" 같은 단계를 사람이 순서대로 해야 해서, 한 단계라도 빼먹으면 장애로 이어져요. CI/CD는 이 순서를 코드로 고정해서, 매번 똑같은 절차로 배포되는 걸 보장해요.'},
-        {h:'왜 GitHub Actions인가', t:'코드가 이미 GitHub에 있어서 저장소 이벤트(push)에 바로 반응할 수 있고, 별도 CI 서버(Jenkins 등)를 운영·패치할 필요가 없어요. AWS 자격증명도 GitHub Secrets로 저장소 단위로 격리할 수 있어요.'},
-        {h:'왜 커밋 해시 + latest 두 태그를 쓰나', t:'latest는 "지금 배포된 버전"을 항상 가리키게 해서 배포 자동화에 쓰고, 커밋 해시 태그는 특정 시점의 이미지를 영구히 보존해서 "정확히 이 커밋으로 롤백"이 가능하게 해요. latest만 쓰면 이전 버전 이미지가 덮어써져 사라져요.'},
-        {h:'왜 한 번에 전부 교체하지 않고 Instance Refresh(최소 50% 유지)인가', t:'전체를 한 번에 내렸다 올리면 그 순간 서비스가 완전히 끊겨요. 최소 50%를 유지하면서 한 대씩 순차적으로 교체하면, 배포 중에도 항상 최소 1대는 요청을 받을 수 있어서 무중단 배포가 돼요. 새 인스턴스가 ELB 헬스체크를 통과한 뒤에만 다음 인스턴스로 넘어가서, 잘못된 배포가 전체로 퍼지기 전에 자동으로 멈춰요.'},
-        {h:'왜 CI 권한을 최소화했나', t:'CI 자격증명은 GitHub Secrets에 저장돼서 저장소 접근 권한이 있는 사람 누구나 실행할 수 있는 파이프라인이에요. 만약 유출되면 피해 범위가 커지니까, ECR push와 Instance Refresh 트리거 두 가지 액션 외에는 아무것도 못 하게 IAM을 좁혀뒀어요.'},
-        {h:'남은 개선점 — 정적 액세스 키를 아직 쓰고 있음', t:'현재 CI 자격증명이 GitHub Secrets에 저장된 정적 Access Key/Secret Key예요. 이 키는 만료가 없어서, 유출되면 회수(rotate)하기 전까지 계속 유효해요. GitHub Actions는 OIDC(OpenID Connect)로 AWS와 신뢰 관계를 맺어서 매 실행마다 단기 토큰을 발급받는 방식을 지원하는데, 이러면 정적 키 자체가 존재하지 않아 유출 위험이 사라져요. assac-role-github-actions라는 역할이 이미 만들어져 있어서, OIDC 연동 설정만 마치면 전환할 수 있어요 — 지금은 실제로 이 OIDC 경로로 쓰이고 있는지 확인이 필요한 상태예요.'},
-        {h:'기각한 대안 — Blue/Green 배포', t:'완전히 새 인스턴스 세트를 통째로 띄우고 트래픽을 한 번에 전환하는 Blue/Green은 롤백이 더 빠르다는 장점이 있어요. 하지만 한순간에 인스턴스가 2배로 필요해서 비용이 더 들고, 이 프로젝트 규모(WAS 2~6대)에서는 그 이점보다 인프라 복잡도 증가가 더 커서, 더 단순한 롤링(Instance Refresh) 방식을 택했어요.'}
-      ] },
-
-    terraform:{ kicker:'IAC', title:'Terraform', config:'콘솔로 만든 리소스를 모듈 5개(network/security-group/compute/rds/edge)로 import, state는 S3(버전관리+암호화+자체 잠금)', why:'수동으로 구성했던 인프라를 코드로 옮겨서, 다음에 누가 봐도 똑같이 재현하고 리뷰할 수 있게 하려고요.',
-      points:[
-        {h:'왜 콘솔로 이미 만든 걸 다시 만들지 않고 import 하나', t:'이미 실제 서비스가 돌아가고 있는 상태예요. 코드를 쓰고 그냥 apply하면 Terraform이 "이 리소스를 모른다"고 판단해서 새로 만들려다 충돌·중단 사고가 날 수 있어요. import는 기존 리소스를 그대로 둔 채 "이제부터 Terraform이 이걸 관리한다"고 등록만 하는 방식이라, 서비스 중단 없이 안전하게 코드화할 수 있어요.'},
-        {h:'왜 모듈을 5개로 나눴나 (하나의 큰 파일 대신)', t:'담당자가 여러 명이라, 하나의 거대한 파일을 같이 수정하면 Git 충돌이 잦아지고 리뷰도 어려워져요. 계층별(network/security-group/compute/rds/edge)로 나누면 각자 자기 모듈만 신경 쓰면 되고, 의존성 방향(network → security-group → compute/rds → edge)도 명확해져서 어떤 순서로 작업해야 하는지 코드 구조 자체가 알려줘요.'},
-        {h:'왜 state를 S3에 두나 (로컬 파일 대신)', t:'로컬에 state 파일을 두면 팀원마다 다른 state를 보게 되고, 누군가 apply하면 다른 사람의 state는 바로 구버전이 돼요. S3에 공유 state를 두면 전원이 항상 같은 최신 상태를 기준으로 plan을 돌릴 수 있고, 버전 관리를 켜두면 실수로 state가 깨져도 이전 버전으로 복구할 수 있어요. 자체 잠금(lockfile)은 두 명이 동시에 apply해서 state가 꼬이는 사고를 막아줘요.'},
-        {h:'왜 PR 리뷰 → plan 확인 → apply 순서를 강제하나', t:'인프라 변경은 코드 버그와 달리 되돌리기 어렵거나 서비스에 즉각 영향을 줄 수 있어요. PR 리뷰로 다른 사람이 먼저 변경 내용을 확인하고, plan으로 "실제로 뭐가 바뀔지" 미리 보고 나서야 apply하게 만들면, 의도치 않은 변경이 프로덕션에 그대로 적용되는 사고를 사전에 막을 수 있어요.'},
-        {h:'왜 prevent_destroy를 핵심 리소스에 걸었나', t:'보안 그룹처럼 다른 리소스가 참조하고 있는 자원을 실수로 삭제하면 연쇄적으로 서비스 장애가 나요. prevent_destroy는 "이 리소스는 의도적으로 코드에서 제거해도 Terraform이 삭제를 거부한다"는 안전핀이라, 오탈자나 실수로 인한 삭제 명령이 실제로 실행되는 걸 막아줘요.'}
-      ], tags:['보안 그룹 등 핵심 리소스는 prevent_destroy로 삭제 방지'] }
-  };
-
-  // ---- drawer logic ----
-  var scrim = document.getElementById('scrim');
-  var drawer = document.getElementById('drawer');
-  var closeBtn = document.getElementById('drawer-close');
-  var titleEl = document.getElementById('drawer-title');
-  var kickerEl = document.getElementById('drawer-kicker');
-  var bodyEl = document.getElementById('drawer-body');
-  var activeBtn = null;
-
-  function openDrawer(id, btn){
-    var d = DATA[id];
-    if(!d) return;
-    if(activeBtn) activeBtn.classList.remove('active');
-    activeBtn = btn;
-    if(btn) btn.classList.add('active');
-
-    kickerEl.textContent = d.kicker;
-    titleEl.textContent = d.title;
-
-    var html = '';
-    html += '<div class="field"><p class="field-label">실제 설정</p><p class="field-value mono">'+escapeHtml(d.config)+'</p></div>';
-    html += '<div class="field"><p class="field-label">왜 이렇게 했나</p><p class="field-value">'+escapeHtml(d.why)+'</p></div>';
-    if(d.extra){
-      html += '<div class="field"><p class="field-value">'+escapeHtml(d.extra)+'</p></div>';
-    }
-    if(d.points && d.points.length){
-      html += '<div class="field"><p class="field-label">항목별 근거</p><div class="point-list">';
-      d.points.forEach(function(p){
-        html += '<div class="point"><p class="point-h">'+escapeHtml(p.h)+'</p><p class="point-t">'+escapeHtml(p.t)+'</p></div>';
-      });
-      html += '</div></div>';
-    }
-    if(d.tags && d.tags.length){
-      html += '<div class="field"><p class="field-label">세부 규칙 / 참고</p><div class="tag-row">';
-      d.tags.forEach(function(t){
-        var warn = t.indexOf('⚠') === 0;
-        html += '<span class="tag'+(warn?' warn':'')+'">'+escapeHtml(t)+'</span>';
-      });
-      html += '</div></div>';
-    }
-    bodyEl.innerHTML = html;
-
-    scrim.classList.add('open');
-    drawer.classList.add('open');
-  }
-
-  function closeDrawer(){
-    scrim.classList.remove('open');
-    drawer.classList.remove('open');
-    if(activeBtn) activeBtn.classList.remove('active');
-    activeBtn = null;
-  }
-
-  function escapeHtml(s){
-    return String(s).replace(/[&<>"']/g, function(c){
-      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
-    });
-  }
-
-  document.addEventListener('click', function(e){
-    var btn = e.target.closest('button[data-id]');
-    if(btn){
-      openDrawer(btn.getAttribute('data-id'), btn);
-      return;
-    }
-  });
-
-  closeBtn.addEventListener('click', closeDrawer);
-  scrim.addEventListener('click', closeDrawer);
-  document.addEventListener('keydown', function(e){
-    if(e.key === 'Escape') closeDrawer();
-  });
-
-})();
-</script>
+  <footer>아이콘은 조회용이에요. 각 지도의 박스를 누르면 오른쪽에 자세한 설명이 열려요.</footer>
+</main>
+</body>
+</html>

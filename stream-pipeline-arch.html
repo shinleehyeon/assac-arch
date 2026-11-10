@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>실시간 이벤트 데이터 파이프라인 지도</title>
+<style>
+:root{
+  --ink:#16191f;
+  --muted:#545b64;
+  --line:#5f6b7a;
+  --purple:#8c4fff;
+  --bg:#ffffff;
+  --surface:#ffffff;
+  --surface-2:#f4f6f8;
+  --border:#d5dbe1;
+  --accent:#0073bb;
+  --danger:#d13212;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+body{margin:0;background:#fff;color:var(--ink);font-family:"Helvetica Neue",Arial,"Apple SD Gothic Neo","Noto Sans KR",sans-serif}
+.wrap{max-width:1440px;margin:0 auto;padding:16px 16px 40px}
+header.page{margin:0 0 12px}
+.eyebrow{margin:0;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+h1{margin:2px 0 0;font-size:18px;font-weight:700;letter-spacing:-.01em}
+.lead{margin:3px 0 0;color:var(--muted);font-size:13px}
+
+.board{display:grid;grid-template-columns:minmax(0,1fr) 148px;gap:10px;align-items:start}
+.topflow{grid-column:1}
+.aws{grid-column:1}
+.ext{grid-column:2;grid-row:1 / span 2;border:1.5px solid #232f3e;border-radius:8px;padding:8px 6px 12px;background:#fff}
+.ext h3{margin:0 0 10px;text-align:center;font-size:12px}
+.ext .svc{width:100%;margin-bottom:10px}
+.wire{font-size:10px;color:var(--muted);text-align:center;margin:-4px 0 8px}
+
+.flow{display:flex;align-items:flex-start;justify-content:center}
+.svc{display:flex;flex-direction:column;align-items:center;gap:3px;width:92px;padding:0;border:0;background:transparent;color:inherit;font:inherit;cursor:pointer}
+.lbl{font-size:11px;line-height:1.25;text-align:center;color:#232f3e}
+.lbl small{display:block;color:var(--muted);font-size:10px;font-weight:400}
+.ico{width:40px;height:40px;display:block;object-fit:contain}
+.tile{width:40px;height:40px;border-radius:8px;display:grid;place-items:center;flex:none}
+.tile b{color:#fff;font-size:10px;font-weight:700;letter-spacing:.02em;line-height:1}
+.tile img{width:24px;height:24px;display:block}
+.tile.ink{background:#232f3e}
+.tile.purple{background:#8C4FFF}
+.tile.pink{background:#E7157B}
+.tile.py{background:#3b6ea5}
+.tile.local{background:#6b7785}
+.tile.num{background:#fff;border:1.5px solid #8C4FFF}
+.tile.num b{color:#5c35c4;font-size:11px}
+button.svc:hover .ico,button.svc:hover .tile{transform:translateY(-1px)}
+button.svc:focus-visible{outline:2px solid #0073bb;outline-offset:2px;border-radius:8px}
+button.svc.active .ico,button.svc.active .tile{outline:2px solid #0073bb;outline-offset:2px}
+
+.arr{flex:none;width:16px;height:0;border-top:1.5px solid var(--line);margin-top:18px;position:relative}
+.arr::after{content:"";position:absolute;right:-1px;top:-4px;border:4px solid transparent;border-left:5px solid var(--line)}
+.arr.dot{border-top-style:dashed;width:22px}
+
+.pill{border:1px solid var(--purple);color:#5c35c4;font-size:10px;line-height:1.35;text-align:center;border-radius:3px;padding:3px 8px;background:#fff}
+button.pill{cursor:pointer;font:inherit;font-size:10px}
+button.pill:hover{background:#f6f1ff}
+.drop{display:flex;flex-direction:column;align-items:center;color:var(--muted);font-size:10px;line-height:1.35;text-align:center;margin-top:6px}
+.drop i{display:block;width:0;height:28px;border-left:1.5px dashed var(--line);position:relative;margin-top:3px}
+.drop i::after{content:"";position:absolute;left:-4px;bottom:-1px;border:4px solid transparent;border-top:6px solid var(--line)}
+
+.aws{border:1.5px solid #232f3e;border-radius:8px;padding:10px 12px 12px;background:#fff;display:grid;grid-template-columns:minmax(0,1fr) 250px;gap:10px;align-items:start}
+.aws-cap{display:flex;align-items:center;gap:6px;font-weight:700;font-size:13px;margin:0 0 8px;grid-column:1 / -1}
+.aws-cap img{width:22px;height:16px;object-fit:contain}
+.reg{margin-left:8px;font-weight:500;color:var(--muted);font-size:11px}
+
+.stack{display:flex;flex-direction:column;gap:10px}
+.stage{border:1.5px dashed #b48ae8;border-radius:6px;padding:8px 10px 10px;background:#fff}
+.stage.ctl{border-color:#e58aae}
+.stage.qry{border-color:#8fb3d9}
+.stage-cap{margin:0 0 8px;font-size:12px;font-weight:700;color:#3b3f8f}
+.stage.ctl .stage-cap{color:#b0125e}
+.stage.qry .stage-cap{color:#0b5a99}
+.stage-cap small{font-weight:500;color:var(--muted);margin-left:6px;font-size:10px}
+.tables{display:flex;gap:8px;justify-content:center;margin-top:8px;flex-wrap:wrap}
+
+.vpc{border:1.5px solid #248814;border-radius:4px;padding:8px 8px 10px}
+.vpc-cap{color:#1d8102;font-size:12px;font-weight:700;display:flex;gap:4px;align-items:center;margin:0 0 6px}
+.vpc-cap img{width:18px;height:18px}
+.azgrid{display:grid;grid-template-columns:1fr 112px 1fr;gap:6px 8px;align-items:stretch}
+.sub{border-radius:3px;min-height:92px;padding:18px 4px 6px;position:relative;display:flex;align-items:center;justify-content:center}
+.subcap{position:absolute;top:3px;left:6px;font-size:10px;line-height:1.2}
+.raw{background:#f3faf3;border:1.5px solid #8fce7a}
+.raw .subcap{color:#1d6b12}
+.clean{background:#f3fbfb;border:1.5px solid #7ec8c4}
+.clean .subcap{color:#0d6a70}
+.misc{background:#fafafa;border:1.5px dashed #b5bcc4}
+.misc .subcap{color:#545b64}
+.old{background:#fff6ec;border:1.5px dashed #f0b27a}
+.old .subcap{color:#c45500}
+.bridge{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:2px}
+.bridge .wire{margin:0}
+.sub .ico,.sub .tile{width:32px;height:32px}
+.sub .lbl{font-size:10px}
+.sub .svc{width:150px}
+
+.ops{display:flex;flex-direction:column;gap:8px}
+.panel{border:1.5px dashed #e3a45a;border-radius:6px;padding:6px 4px 8px;background:#fff}
+.panel h3{margin:0 0 6px;text-align:center;font-size:11px;font-weight:700}
+.igrid{display:grid;grid-template-columns:1fr 1fr;gap:6px 0;justify-items:center}
+.panel .svc{width:104px}
+.panel .ico,.panel .tile{width:28px;height:28px}
+.panel .tile b{font-size:9px}
+.panel .lbl{font-size:10px}
+
+footer.note{margin-top:18px;padding-top:12px;border-top:1px solid #e6eaed;color:var(--muted);font-size:12px;line-height:1.7}
+footer.note button{border:0;background:none;padding:0;color:#0073bb;font:inherit;cursor:pointer}
+footer.note button:hover{text-decoration:underline}
+
+.scrim{position:fixed;inset:0;background:rgba(22,25,31,.45);opacity:0;pointer-events:none;transition:opacity .18s ease;z-index:20}
+.scrim.open{opacity:1;pointer-events:auto}
+.drawer{position:fixed;right:0;top:0;bottom:0;width:min(440px,100%);background:#fff;border-left:1px solid var(--border);z-index:21;transform:translateX(100%);transition:transform .22s cubic-bezier(.2,.7,.3,1);display:flex;flex-direction:column}
+.drawer.open{transform:translateX(0)}
+@media (max-width:640px){
+  .drawer{right:0;left:0;top:auto;width:auto;max-height:82vh;border-left:none;border-top:1px solid var(--border);border-radius:16px 16px 0 0;transform:translateY(100%)}
+  .drawer.open{transform:translateY(0)}
+}
+.drawer-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:18px 18px 12px;border-bottom:1px solid var(--border)}
+.drawer-head .k{margin:0 0 4px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+.drawer-head h2{margin:0;font-size:18px}
+.close-btn{width:32px;height:32px;border-radius:8px;border:1px solid var(--border);background:var(--surface-2);color:var(--muted);font-size:16px;cursor:pointer}
+.drawer-body{padding:16px 18px 28px;overflow:auto}
+.field{margin-bottom:18px}
+.field-label{margin:0 0 6px;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.field-value{margin:0;font-size:14px;line-height:1.7}
+.field-value.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;background:#f4f6f8;border:1px solid var(--border);border-radius:8px;padding:10px 12px;white-space:pre-wrap;word-break:break-word}
+.point-list{display:flex;flex-direction:column;gap:12px}
+.point{border-left:2px solid var(--accent);padding-left:12px}
+.point-h{margin:0 0 3px;font-size:13px;font-weight:650}
+.point-t{margin:0;font-size:13px;line-height:1.65;color:#3d4a57}
+.tag-row{display:flex;gap:6px;flex-wrap:wrap}
+.tag{font-size:11px;border:1px solid var(--border);color:var(--muted);padding:3px 8px;border-radius:100px}
+.tag.warn{border-color:#e6c27a;color:#8a5a00}
+.empty-state{display:flex;flex-direction:column;align-items:center;text-align:center;padding:36px 16px;color:var(--muted);gap:8px}
+.empty-state p{margin:0;font-size:13px;line-height:1.6;max-width:28ch}
+@media (max-width:1100px){
+  .board,.aws{grid-template-columns:1fr}
+  .ext{grid-column:1;grid-row:auto}
+  .flow{justify-content:flex-start;overflow-x:auto;padding-bottom:4px}
+}
+
+/* 데이터 파이프라인 배치: 왼쪽에서 오른쪽으로 흐르는 레인 */
+.pipe{display:grid;grid-template-columns:136px 24px minmax(0,1fr);gap:0;align-items:stretch}
+.harr-in{grid-column:2;grid-row:1}
+.bottom .panel:first-child .igrid{grid-template-columns:1fr 1fr}
+.srcs{border:1.5px solid #232f3e;border-radius:8px;padding:8px 6px 12px;background:#fff;display:flex;flex-direction:column;align-items:center;gap:4px}
+.srcs h3{margin:0 0 6px;font-size:11px;letter-spacing:.08em}
+.srcs .wire{margin:2px 0 0}
+.vline{display:block;width:0;height:22px;border-left:1.5px solid var(--line);position:relative;margin:2px 0}
+.vline::after{content:"";position:absolute;left:-4px;bottom:-1px;border:4px solid transparent;border-top:6px solid var(--line)}
+.vline.dash{border-left-style:dashed}
+.aws{display:block}
+.pipe .srcs{grid-column:1;grid-row:1}
+.pipe .aws{grid-column:3;grid-row:1}
+.lanes{display:grid;grid-template-columns:minmax(0,1fr) 24px minmax(0,1fr) 24px minmax(0,1.05fr) 24px minmax(0,1fr) 24px minmax(0,1fr);align-items:stretch}
+.harr{align-self:center;height:0;border-top:1.5px solid var(--line);position:relative;margin:0 2px}
+.harr::after{content:"";position:absolute;right:-1px;top:-4px;border:4px solid transparent;border-left:5px solid var(--line)}
+.zone{border-radius:6px;padding:8px 6px 12px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:4px;min-height:330px}
+.zone .zone-cap + .svc{margin-top:auto}
+.zone > .svc:last-child{margin-bottom:auto}
+.zone > .tables{margin-bottom:auto}
+.zone-cap{align-self:stretch;margin:0 0 6px;font-size:11px;font-weight:700;letter-spacing:.06em;line-height:1.3}
+.zone-cap small{display:block;font-weight:500;letter-spacing:0;color:var(--muted);font-size:10px}
+.zone .svc{width:100%;max-width:180px}
+.zone.ing{border:1.5px dashed #b48ae8}
+.zone.ing .zone-cap{color:#3b3f8f}
+.zone.raw{background:#f3faf3;border:1.5px solid #8fce7a}
+.zone.raw .zone-cap{color:#1d6b12}
+.zone.proc{border:1.5px dashed #e58aae}
+.zone.proc .zone-cap{color:#b0125e}
+.zone.cln{background:#f3fbfb;border:1.5px solid #7ec8c4}
+.zone.cln .zone-cap{color:#0d6a70}
+.zone.srv{border:1.5px dashed #8fb3d9}
+.zone.srv .zone-cap{color:#0b5a99}
+.zone .aux{margin-top:auto;padding-top:8px;width:100%;display:flex;justify-content:center;border-top:1px dashed #b5bcc4}
+.zone .aux .ico{width:28px;height:28px}
+.zone .aux .lbl{font-size:10px}
+.zone .tables{flex-direction:column;align-items:stretch;margin-top:10px}
+.bottom{display:grid;grid-template-columns:1fr 1.2fr 1.2fr;gap:10px;margin-top:10px}
+.bottom .panel .svc{width:112px}
+.bottom .igrid{grid-template-columns:repeat(auto-fit,minmax(112px,1fr))}
+@media (max-width:1100px){
+  .pipe{grid-template-columns:1fr}
+  .lanes{grid-template-columns:1fr}
+  .harr{height:22px;width:0;border-top:0;border-left:1.5px solid var(--line);justify-self:center;margin:2px 0}
+  .harr::after{right:auto;left:-4px;top:auto;bottom:-1px;border:4px solid transparent;border-top:6px solid var(--line);border-left-color:transparent}
+  .zone{min-height:0}
+  .bottom{grid-template-columns:1fr}
+}
+
+/* v3: 번호가 붙은 6단계, 한국어 설명, 큰 글자 */
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center;font-size:12px;color:#3d4a57;margin:0 0 10px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.lg{display:inline-block;width:14px;height:14px;border-radius:3px}
+.lg.s3{background:#7AA116}
+.lg.svc2{background:#8C4FFF}
+.lg.auto{background:#E7157B}
+.lg.you{background:#232f3e}
+.lg-note{margin-left:auto;color:var(--muted)}
+.no{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;background:#232f3e;color:#fff;font-size:12px;font-weight:700;margin-right:6px;letter-spacing:0}
+.zone-cap{display:flex;align-items:center;font-size:14px;letter-spacing:0;margin:0}
+.srcs h3{display:flex;align-items:center;justify-content:center;font-size:14px;letter-spacing:0;margin:0}
+.zdesc{margin:2px 0 8px;font-size:12px;color:var(--muted);text-align:center;align-self:stretch}
+.srcs .zdesc{margin-bottom:10px}
+.svc{width:100%;max-width:190px}
+.lbl{font-size:13px;line-height:1.35;font-weight:600}
+.lbl small{font-size:12px;font-weight:400;margin-top:1px}
+.lbl .path{display:block;font-style:normal;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10.5px;color:#0d6a70;margin-top:3px;word-break:break-all;font-weight:400}
+.ico{width:48px;height:48px}
+.tile{width:48px;height:48px;border-radius:10px}
+.tile b{font-size:11px}
+.vline{height:26px}
+.zone{min-height:380px;padding:10px 8px 14px}
+.zone .zone-cap + .zdesc + .svc{margin-top:auto}
+.zone .zone-cap + .svc{margin-top:0}
+.zone .num{margin:8px 0 0;font-size:12px;color:#3d4a57}
+.zone .num b{font-size:22px;color:#16191f;margin-right:2px}
+.zone.raw .num b{color:#b45a00}
+.zone.cln .num b{color:#0d6a70}
+.zone .aux{margin-top:auto;padding-top:10px;border-top:1px dashed #b5bcc4}
+.zone .svc.aux .ico{width:30px;height:30px}
+.zone .svc.aux .lbl{font-size:12px}
+.zone .svc.aux .lbl small{font-size:11px}
+.tile.num2{background:#fff;border:1.5px solid #8C4FFF}
+.tile.num2 b{color:#5c35c4;font-size:12px}
+.tables{gap:8px}
+.pill{font-size:11.5px;line-height:1.45;padding:6px 8px;border-radius:5px}
+.pill br + *{}
+.aws-cap{font-size:14px}
+.panel h3{font-size:12.5px;margin-bottom:8px}
+.bottom .panel .svc{width:130px}
+.panel .lbl{font-size:12px}
+.panel .lbl small{font-size:11px}
+.panel .ico,.panel .tile{width:36px;height:36px}
+.bottom{grid-template-columns:1fr 1.15fr 1.15fr}
+@media (max-width:1100px){.lg-note{margin-left:0;flex-basis:100%}}
+
+/* v6: git graph처럼 한 줄 메인 + 아래로 갈라졌다가 다시 합쳐지는 분기 */
+.gg{display:grid;grid-template-columns:150px 24px minmax(0,1fr) 24px minmax(0,1fr) 24px minmax(0,1fr) 24px minmax(0,1.15fr) 24px minmax(0,1fr) 24px minmax(0,1fr);grid-template-rows:auto auto minmax(300px,auto) auto minmax(250px,auto) 10px;align-items:stretch}
+.gg .frame{grid-column:3 / 14;grid-row:1 / 7;border:1.5px solid #232f3e;border-radius:8px;margin:0 -8px;pointer-events:none}
+.gg .framecap{grid-column:3 / 10;grid-row:1;display:flex;align-items:center;gap:6px;font-weight:700;font-size:14px;padding:6px 0 0 2px}
+.gg .framecap img{width:22px;height:16px;object-fit:contain}
+.gg .framecap .reg{margin-left:8px;font-weight:500;color:var(--muted);font-size:12px}
+.gg .cell{display:flex}
+.gg .cell > .zone{flex:1;min-height:0;width:100%}
+.gg .srcs{grid-column:1;grid-row:3}
+.gg .harr{align-self:center}
+.cap{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;align-self:end;padding:6px 0 4px}
+.cap small{font-weight:400;color:var(--muted);font-size:12px}
+.cap .badge{display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 7px;border-radius:4px;color:#fff;font-size:12px}
+.cap.st{color:#0b5a99}
+.cap.st .badge{background:#0b5a99}
+.cap.bt{color:#1d6b12}
+.cap.bt .badge{background:#1d8102}
+.cap.br{color:#a85400}
+.cap.br .badge{background:#d06a00}
+.ln{position:relative}
+.ln i{position:absolute;display:block}
+.ln .h{border-top:1.5px solid var(--line)}
+.ln .v{border-left:1.5px solid var(--line)}
+.ln.vc .v{left:50%;top:0;bottom:0}
+.ln.fork .v{left:50%;top:0;height:50%}
+.ln.fork .h{top:50%;left:50%;right:0}
+.ln.hz .h{top:50%;left:0;right:0}
+.ln.hz.go .h::after{content:"";position:absolute;right:-1px;top:-4px;border:4px solid transparent;border-left:5px solid var(--line)}
+.ln.join .h{top:50%;left:0;width:50%}
+.ln.join .v{left:50%;top:0;height:50%}
+.ln.up .v{left:50%;top:0;bottom:0}
+.ln.up .v::before{content:"";position:absolute;left:-4px;top:-1px;border:4px solid transparent;border-bottom:6px solid var(--line)}
+.no.br{background:#d06a00}
+.tile.zep{background:#e8590c}
+.tile.flink{background:#6f42c1}
+.tile.cat{background:#5a3cc7}
+.zone{min-height:0}
+.zone.stream{border:1.5px dashed #b48ae8}
+.zone.stream .zone-cap{color:#3b3f8f}
+.zone.agg{background:#fff8ee;border:1.5px solid #f0b27a}
+.zone.agg .zone-cap{color:#a85400}
+.zone.live{border:1.5px dashed #e3a45a}
+.zone.live .zone-cap{color:#a85400}
+.zone .pill{margin-top:8px}
+.zone > .pill:last-child{margin-bottom:auto}
+.zone.trunkz{justify-content:center;gap:6px}
+.bottom{display:grid;grid-template-columns:1fr 1fr 1.3fr;gap:10px;margin-top:12px}
+.bottom .panel .svc{width:118px}
+.concepts{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;padding:2px 6px}
+.concepts .pill{font-size:11.5px;padding:6px 9px;line-height:1.35;border-radius:5px}
+.field-value.simple{font-size:15px;font-weight:600;line-height:1.6;color:#16191f}
+@media (max-width:1100px){
+  .gg{display:block}
+  .gg .frame,.gg .ln{display:none}
+  .gg .cell,.gg .srcs{display:block;margin:6px 0}
+  .gg .harr{height:22px;width:0;border-top:0;border-left:1.5px solid var(--line);margin:2px auto}
+  .gg .harr::after{right:auto;left:-4px;top:auto;bottom:-1px;border:4px solid transparent;border-top:6px solid var(--line);border-left-color:transparent}
+  .bottom{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="page">
+    <p class="eyebrow">AWS data pipeline · 스트리밍 수집 → 배치 처리 (+ 실시간 분기)</p>
+    <h1>실시간 이벤트 데이터 파이프라인 지도</h1>
+    <p class="lead">메인 흐름은 이벤트를 스트리밍으로 받아서(Kinesis → Firehose → S3) 배치로 정리해요(Scheduler → Step Functions → Glue). Kinesis에서 아래로 갈라져 Flink로 바로 집계한 뒤, 마지막에 Athena에서 다시 만나요.</p>
+  </header>
+
+  <div class="legend">
+    <span><i class="lg s3"></i>S3 저장소</span>
+    <span><i class="lg svc2"></i>데이터 서비스</span>
+    <span><i class="lg auto"></i>자동 실행 (시간·순서 제어)</span>
+    <span><i class="lg you"></i>데이터를 만드는 쪽 · 노트북</span>
+    <span class="lg-note">박스를 누르면 개념과 쓰는 이유가 나와요.</span>
+  </div>
+
+  <div class="gg">
+    <div class="frame"></div>
+    <div class="framecap"><img src="icons/aws-cloud.svg" alt="">AWS Cloud <span class="reg">서울 리전</span></div>
+
+    <div class="cap st" style="grid-column:3 / 8;grid-row:2"><span class="badge">메인</span>스트리밍 구간 <small>이벤트를 계속 받아서 S3에 쌓아요</small></div>
+    <div class="cap bt" style="grid-column:9 / 14;grid-row:2"><span class="badge">메인</span>배치 구간 <small>쌓인 데이터를 10분마다 한꺼번에 정리해요</small></div>
+
+    <aside class="srcs">
+      <h3>데이터 만드는 쪽</h3>
+      <p class="zdesc">앱 · 서버 · 센서</p>
+      <button type="button" class="svc" data-id="producer"><span class="tile ink"><img src="icons/user.svg" alt=""></span><span class="lbl">이벤트 생성기<small>Producer · 이벤트를 계속 보냄</small></span></button>
+      <p class="zdesc" style="margin-top:12px">클릭, 주문, 로그 같은<br>이벤트가 끊임없이 발생</p>
+    </aside>
+    <span class="harr" style="grid-column:2;grid-row:3"></span>
+
+    <div class="cell" style="grid-column:3;grid-row:3">
+      <section class="zone ing">
+        <h3 class="zone-cap"><b class="no">1</b>받기 · 입구</h3>
+        <p class="zdesc">여기서 분기가 갈라져요</p>
+        <button type="button" class="svc" data-id="kinesis"><span class="tile purple"><b>KDS</b></span><span class="lbl">Kinesis Data Streams<small>이벤트가 들어오는 입구</small></span></button>
+      </section>
+    </div>
+    <span class="harr" style="grid-column:4;grid-row:3"></span>
+    <div class="cell" style="grid-column:5;grid-row:3">
+      <section class="zone ing">
+        <h3 class="zone-cap"><b class="no">2</b>저장소로 전달</h3>
+        <p class="zdesc">모아서 파일로 배달</p>
+        <button type="button" class="svc" data-id="firehose"><span class="tile purple"><b>KDF</b></span><span class="lbl">Firehose<small>스트림 → S3 자동 전달</small></span></button>
+      </section>
+    </div>
+    <span class="harr" style="grid-column:6;grid-row:3"></span>
+    <div class="cell" style="grid-column:7;grid-row:3">
+      <section class="zone raw">
+        <h3 class="zone-cap"><b class="no">3</b>원본 저장</h3>
+        <p class="zdesc">보낸 그대로 보관</p>
+        <button type="button" class="svc" data-id="s3_raw"><img class="ico" src="icons/s3.svg" alt=""><span class="lbl">S3 · Raw 영역<small>원본 · 중복이 있을 수 있음</small></span></button>
+        <button type="button" class="pill" data-id="tbl_raw">원본 테이블<br>(JSON)</button>
+      </section>
+    </div>
+    <span class="harr" style="grid-column:8;grid-row:3"></span>
+    <div class="cell" style="grid-column:9;grid-row:3">
+      <section class="zone proc">
+        <h3 class="zone-cap"><b class="no">4</b>정리하기</h3>
+        <p class="zdesc">정해진 시간마다 자동으로</p>
+        <button type="button" class="svc" data-id="scheduler"><span class="tile pink"><b>Sched</b></span><span class="lbl">EventBridge Scheduler<small>정해진 시간에 시작 신호</small></span></button>
+        <i class="vline"></i>
+        <button type="button" class="svc" data-id="sfn"><span class="tile pink"><b>SFN</b></span><span class="lbl">Step Functions<small>순서 · 재시도 · 실패 처리</small></span></button>
+        <i class="vline"></i>
+        <button type="button" class="svc" data-id="glue"><span class="tile purple"><b>Glue</b></span><span class="lbl">Glue ETL job<small>중복 제거 · 형식 변환</small></span></button>
+      </section>
+    </div>
+    <span class="harr" style="grid-column:10;grid-row:3"></span>
+    <div class="cell" style="grid-column:11;grid-row:3">
+      <section class="zone cln">
+        <h3 class="zone-cap"><b class="no">5</b>정제본 저장</h3>
+        <p class="zdesc">깨끗하게 정리된 데이터</p>
+        <button type="button" class="svc" data-id="s3_clean"><img class="ico" src="icons/s3.svg" alt=""><span class="lbl">S3 · Clean 영역<small>중복 없음 · Parquet</small></span></button>
+        <button type="button" class="pill" data-id="tbl_clean">정제본 테이블<br>(Parquet)</button>
+      </section>
+    </div>
+    <span class="harr" style="grid-column:12;grid-row:3"></span>
+    <div class="cell" style="grid-column:13;grid-row:3">
+      <section class="zone srv trunkz">
+        <h3 class="zone-cap"><b class="no">6</b>조회</h3>
+        <p class="zdesc">결과를 SQL로 확인</p>
+        <button type="button" class="svc" data-id="athena"><span class="tile purple"><b>Athena</b></span><span class="lbl">Amazon Athena<small>S3 파일을 SQL로 조회</small></span></button>
+      </section>
+    </div>
+
+    <div class="cap br" style="grid-column:5 / 12;grid-row:4"><span class="badge">분기</span>실시간 처리 분기 <small>Kinesis에서 갈라져서, 쌓지 않고 도착하는 즉시 1분 단위로 계산해요 · 한 번 켜면 계속 실행돼서 스케줄러가 필요 없어요</small></div>
+
+    <div class="ln vc" style="grid-column:3;grid-row:4"><i class="v"></i></div>
+    <div class="ln fork" style="grid-column:3;grid-row:5"><i class="v"></i><i class="h"></i></div>
+    <div class="ln hz go" style="grid-column:4;grid-row:5"><i class="h"></i></div>
+
+    <div class="cell" style="grid-column:5;grid-row:5">
+      <section class="zone live">
+        <h3 class="zone-cap"><b class="no br">1</b>실시간 집계</h3>
+        <p class="zdesc">쌓지 않고 바로 계산</p>
+        <button type="button" class="svc" data-id="zeppelin"><span class="tile zep"><b>Zep</b></span><span class="lbl">Zeppelin 노트북<small>SQL을 작성하고 실행</small></span></button>
+        <i class="vline"></i>
+        <button type="button" class="svc" data-id="flink"><span class="tile flink"><b>Flink</b></span><span class="lbl">Managed Flink<small>스트림을 계속 계산</small></span></button>
+        <button type="button" class="pill" data-id="window">1분 텀블링 창<br>이벤트 시간 · 워터마크</button>
+      </section>
+    </div>
+    <span class="harr" style="grid-column:6;grid-row:5"></span>
+    <div class="cell" style="grid-column:7;grid-row:5">
+      <section class="zone stream">
+        <h3 class="zone-cap"><b class="no br">2</b>집계 결과 스트림</h3>
+        <p class="zdesc">계산 결과를 다시 스트림으로</p>
+        <button type="button" class="svc" data-id="kinesis_agg"><span class="tile purple"><b>KDS</b></span><span class="lbl">Kinesis Data Streams<small>1분 집계 결과</small></span></button>
+      </section>
+    </div>
+    <span class="harr" style="grid-column:8;grid-row:5"></span>
+    <div class="cell" style="grid-column:9;grid-row:5">
+      <section class="zone ing">
+        <h3 class="zone-cap"><b class="no br">3</b>저장소로 전달</h3>
+        <p class="zdesc">모아서 파일로 배달</p>
+        <button type="button" class="svc" data-id="firehose_agg"><span class="tile purple"><b>KDF</b></span><span class="lbl">Firehose<small>스트림 → S3 자동 전달</small></span></button>
+      </section>
+    </div>
+    <span class="harr" style="grid-column:10;grid-row:5"></span>
+    <div class="cell" style="grid-column:11;grid-row:5">
+      <section class="zone agg">
+        <h3 class="zone-cap"><b class="no br">4</b>집계 저장</h3>
+        <p class="zdesc">요약된 데이터만 보관</p>
+        <button type="button" class="svc" data-id="s3_agg"><img class="ico" src="icons/s3.svg" alt=""><span class="lbl">S3 · 집계 영역<small>1분 창별 건수 · 금액</small></span></button>
+        <button type="button" class="pill" data-id="tbl_agg">집계 테이블<br>(JSON)</button>
+      </section>
+    </div>
+    <div class="ln hz" style="grid-column:12;grid-row:5"><i class="h"></i></div>
+    <div class="ln join" style="grid-column:13;grid-row:5"><i class="h"></i><i class="v"></i></div>
+    <div class="ln up" style="grid-column:13;grid-row:4"><i class="v"></i></div>
+  </div>
+
+  <div class="bottom">
+    <section class="panel">
+      <h3>권한 · 서비스 역할</h3>
+      <div class="igrid">
+        <button type="button" class="svc" data-id="iam_firehose"><img class="ico" src="icons/iam.svg" alt=""><span class="lbl">Firehose용<small>Kinesis 읽기 · S3 쓰기</small></span></button>
+        <button type="button" class="svc" data-id="iam_glue"><img class="ico" src="icons/iam.svg" alt=""><span class="lbl">Glue용<small>S3 읽기 · 쓰기</small></span></button>
+        <button type="button" class="svc" data-id="iam_flink"><img class="ico" src="icons/iam.svg" alt=""><span class="lbl">Flink용<small>스트림 · 카탈로그 접근</small></span></button>
+        <button type="button" class="svc" data-id="iam_flow"><img class="ico" src="icons/iam.svg" alt=""><span class="lbl">스케줄 · 워크플로용<small>실행 시작 권한</small></span></button>
+      </div>
+    </section>
+    <section class="panel">
+      <h3>공통 서비스</h3>
+      <div class="igrid">
+        <button type="button" class="svc" data-id="catalog"><span class="tile cat"><b>Cat</b></span><span class="lbl">Glue Data Catalog<small>테이블 설계도 보관</small></span></button>
+        <button type="button" class="svc" data-id="cloudwatch"><img class="ico" src="icons/cloudwatch.svg" alt=""><span class="lbl">CloudWatch<small>로그 · 지표 · 알람</small></span></button>
+      </div>
+    </section>
+    <section class="panel">
+      <h3>알아 두면 좋은 개념</h3>
+      <div class="concepts">
+        <button type="button" class="pill" data-id="c_mode">스트림 vs 배치</button>
+        <button type="button" class="pill" data-id="c_dup">중복과 At-least-once</button>
+        <button type="button" class="pill" data-id="c_time">이벤트 시간 vs 처리 시간</button>
+        <button type="button" class="pill" data-id="c_zone">Raw / Clean / 집계 영역</button>
+        <button type="button" class="pill" data-id="c_parquet">Parquet과 파티션</button>
+      </div>
+    </section>
+  </div>
+
+  <footer class="note">
+    아이콘은 조회용이에요. 설명은 각 서비스의 일반적인 개념과 사용 이유를 정리한 거예요. 그림의 실시간 분기(집계 스트림, 집계 Firehose, 집계 S3)는 구조를 보여 주려고 모두 만들어졌다고 가정하고 그렸어요. 이름이 적힌 색 타일은 공식 아이콘 파일이 이 폴더에 없는 서비스예요.
+  </footer>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<div class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="drawer-title">
+  <div class="drawer-head">
+    <div>
+      <p class="k" id="drawer-kicker">SELECT A NODE</p>
+      <h2 id="drawer-title">구성 요소를 선택하세요</h2>
+    </div>
+    <button class="close-btn" id="drawer-close" aria-label="닫기">✕</button>
+  </div>
+  <div class="drawer-body" id="drawer-body">
+    <div class="empty-state">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+      <p>다이어그램에서 아무 박스나 눌러보세요. 서비스의 개념과 쓰는 이유를 쉽게 설명해 드려요.</p>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+  var DATA = {"producer": {"kicker": "DATA SOURCE", "title": "이벤트 생성기 (Producer)", "simple": "데이터를 만들어서 보내는 쪽이에요. 앱, 서버, 센서가 여기에 해당해요.", "what": "이벤트는 '일어난 일 하나'를 기록한 작은 데이터예요. 예: 주문 화면을 열었다, 결제했다, 센서 값이 바뀌었다. Producer는 이런 이벤트를 만들어 스트림으로 계속 보내는 프로그램을 말해요.", "why": "분석이나 알림은 이벤트가 있어야 시작돼요. 이벤트마다 고유한 ID와 발생 시각을 넣어 두면 나중에 중복을 지우고 시간 순서로 집계할 수 있어요.", "role": "이 그림의 출발점이에요. 만들어진 이벤트가 Kinesis로 들어가요.", "points": [{"h": "좋은 이벤트에 들어가는 것", "t": "고유 ID(중복 제거용), 발생 시각(시간 집계용), 어떤 종류의 이벤트인지, 필요한 값(금액 등)을 담아요. 한 줄에 JSON 하나로 보내면 이후에 읽기 쉬워요."}, {"h": "전송 실패와 재시도", "t": "네트워크 문제로 전송이 실패하면 Producer가 다시 보내는 것이 일반적이에요. 이때 같은 이벤트가 두 번 들어갈 수 있어서 뒤쪽에서 중복을 처리해요."}], "tags": ["이벤트", "Producer", "고유 ID"]}, "kinesis": {"kicker": "INGEST / STREAMING", "title": "Amazon Kinesis Data Streams", "simple": "이벤트가 들어오는 입구예요. 들어온 이벤트를 순서대로 잠시 쌓아 두는 실시간 버퍼예요.", "what": "실시간 데이터 스트림 서비스예요. 데이터는 샤드(shard)라는 통로로 나뉘어 들어오고, 각 이벤트는 파티션 키에 따라 어느 샤드로 갈지 정해져요. 같은 샤드 안에서는 순서가 보장돼요. 데이터는 기본 24시간(최대 365일) 보관돼서 그 안에는 다시 읽을 수 있어요.", "why": "보내는 쪽과 받는 쪽을 분리하기 위해서예요. 받는 쪽이 잠깐 느려지거나 멈춰도 데이터가 사라지지 않고, 여러 소비자(저장용, 실시간 계산용)가 같은 데이터를 각자 읽을 수 있어요.", "role": "모든 이벤트가 가장 먼저 들어오는 입구예요. 메인 흐름은 여기서 Firehose로 이어져 S3에 쌓이고, 같은 스트림에서 실시간 분기(Flink)가 갈라져 나가 바로 계산해요.", "points": [{"h": "샤드가 용량을 정해요", "t": "샤드 하나는 대략 쓰기 초당 1MB(또는 1,000건), 읽기 초당 2MB를 처리해요. 트래픽이 늘면 샤드를 늘려요. 용량을 직접 정하는 프로비저닝 모드와 자동으로 맞춰 주는 온디맨드 모드가 있어요."}, {"h": "Kinesis와 Kafka", "t": "비슷한 역할의 오픈소스가 Apache Kafka예요. Kinesis는 서버 관리가 필요 없는 관리형이고, Kafka는 직접 운영하거나 Amazon MSK로 쓸 수 있어요."}, {"h": "비용 구조", "t": "프로비저닝 모드는 샤드를 켜 둔 시간만큼 요금이 나가요. 쓰지 않을 때는 지워야 해요."}], "tags": ["샤드", "파티션 키", "보존 기간", "버퍼"]}, "firehose": {"kicker": "INGEST / DELIVERY", "title": "Amazon Data Firehose", "simple": "들어온 이벤트를 모아서 S3 같은 저장소에 파일로 자동 배달해 주는 서비스예요.", "what": "스트림 데이터를 S3, Redshift, OpenSearch 같은 목적지로 전달하는 완전 관리형 서비스예요. 데이터를 모았다가 정해 둔 크기나 시간이 되면 한 번에 파일로 써요(버퍼링). 압축, 형식 변환(Parquet 등), Lambda 변환도 지원해요.", "why": "스트림을 저장소로 옮기는 코드를 직접 만들면 재시도, 확장, 장애 처리를 전부 신경 써야 해요. Firehose를 쓰면 설정만으로 이 일을 맡길 수 있어요.", "role": "Kinesis의 이벤트를 S3 Raw 영역에 날짜·시간 폴더로 쌓아요. 집계 경로에서는 1분 집계 결과를 S3 집계 영역으로 보내요.", "points": [{"h": "실시간이 아니라 '거의 실시간'이에요", "t": "버퍼 크기나 시간 중 먼저 채워지는 쪽에 파일이 써져요. 그래서 이벤트가 S3에 보이기까지 버퍼 시간만큼 지연돼요."}, {"h": "폴더는 자동으로 나뉘어요", "t": "기본적으로 접두사 아래에 연/월/일/시 폴더를 만들어 저장해요. 시간 기준으로 데이터를 찾기 쉬워요."}, {"h": "Kinesis Streams와의 차이", "t": "Streams는 데이터를 읽는 쪽이 자유롭게 가져가는 버퍼이고, Firehose는 정해진 목적지로 배달까지 해 줘요. 둘을 이어서 쓰는 것이 흔한 구성이에요."}, {"h": "줄바꿈 구분자", "t": "JSON을 한 줄에 하나씩 읽는 도구(Athena 등)를 쓸 때는 레코드 끝에 줄바꿈을 붙여야 해요. Firehose에 구분자를 추가하는 옵션이 있어요."}], "tags": ["버퍼 크기·시간", "near real-time", "관리형 배달"]}, "s3_raw": {"kicker": "DATA LAKE / RAW", "title": "S3 · Raw 영역", "simple": "받은 그대로 고치지 않고 보관하는 원본 창고예요.", "what": "데이터 레이크의 첫 영역이에요. 들어온 데이터를 변환하거나 지우지 않고 그대로 저장해요. 이 영역을 Bronze 또는 Landing이라고도 불러요. S3는 객체 스토리지로 내구성이 매우 높고(99.999999999%) 용량 제한을 신경 쓰지 않아도 돼요.", "why": "정제 규칙이 틀렸거나 나중에 바뀌어도 원본에서 다시 만들 수 있어요. 원본이 없으면 한 번 잘못 지운 데이터는 복구할 수 없어요.", "role": "Firehose가 쓴 원본이 쌓이고, Glue가 여기서 읽어 가요.", "points": [{"h": "원본은 덮어쓰지 않아요", "t": "수정하거나 삭제하지 않고 추가만 하는 것이 원칙이에요. 중복이 있어도 원본에서는 그대로 두고, 정제 단계에서 처리해요."}, {"h": "폴더 이름이 곧 분류 기준이에요", "t": "날짜·시간으로 폴더를 나누면 필요한 기간만 읽을 수 있어요. 보관 기간이 지난 원본은 수명 주기 규칙으로 싼 저장 등급으로 옮기거나 지울 수 있어요."}], "tags": ["Bronze", "불변 보관", "객체 스토리지"]}, "scheduler": {"kicker": "ORCHESTRATION / TRIGGER", "title": "Amazon EventBridge Scheduler", "simple": "정해진 시간이 되면 자동으로 '시작해!' 신호를 보내 주는 알람시계예요.", "what": "서버리스 스케줄러예요. rate(10 minutes) 같은 주기, cron 식, 한 번만 실행하는 시각을 지정할 수 있고, 시간대도 설정할 수 있어요. 대상으로 Step Functions, Lambda, Glue 등 여러 AWS 서비스를 호출할 수 있어요.", "why": "정기 작업을 사람이 매번 실행하지 않아도 되게 해요. 서버에 cron을 설치하고 관리할 필요가 없어요.", "role": "정해진 간격마다 Step Functions 실행을 시작해서 정리 작업이 자동으로 돌게 해요.", "points": [{"h": "입력값은 스케줄에 저장돼 있어요", "t": "실행할 때마다 스케줄에 저장해 둔 입력 JSON을 그대로 대상에 넘겨요. 스케줄러가 값을 스스로 판단하지는 않아요."}, {"h": "재시도와 종료 설정", "t": "호출이 실패하면 몇 번 다시 시도할지 정할 수 있고, 시작·종료 시각을 둬서 일정 기간만 돌게 할 수도 있어요. 종료를 두지 않으면 계속 실행돼요."}, {"h": "직접 Glue를 부를 수도 있어요", "t": "job이 하나뿐이면 스케줄러가 Glue를 바로 호출해도 돼요. 여러 단계나 오류 처리가 필요하면 Step Functions를 사이에 둬요."}], "tags": ["rate · cron", "서버리스", "트리거"]}, "sfn": {"kicker": "ORCHESTRATION / WORKFLOW", "title": "AWS Step Functions", "simple": "여러 작업을 정해진 순서로 실행하고, 실패하면 어떻게 할지까지 관리하는 지휘자예요.", "what": "서버리스 워크플로 서비스예요. 작업 순서를 상태 머신(JSON, Amazon States Language)으로 정의해요. 상태에는 Task(작업 실행), Choice(조건 분기), Parallel(동시 실행), Map(반복), Wait, Fail 등이 있어요. 실행 과정은 그래프로 보여서 어디서 멈췄는지 바로 알 수 있어요.", "why": "여러 서비스를 이어서 쓸 때 순서, 재시도, 오류 처리를 코드가 아니라 정의로 관리할 수 있어요. 중간에 실패하면 실패한 단계가 기록에 남아요.", "role": "스케줄러의 신호를 받아 Glue job을 실행하고, 끝날 때까지 기다린 뒤 성공이나 실패로 정리해요.", "points": [{"h": ".sync 통합", "t": "Glue 같은 서비스를 호출할 때 .sync를 붙이면 작업이 끝날 때까지 기다렸다가 결과를 받아요. 붙이지 않으면 시작만 하고 바로 넘어가요."}, {"h": "Retry와 Catch", "t": "Retry는 일시적인 오류를 정해진 간격으로 다시 시도하고, Catch는 오류가 났을 때 다른 상태로 보내요. 둘을 정의하면 운영 중 장애 대응이 쉬워져요."}, {"h": "Standard와 Express", "t": "Standard는 오래 걸리는 작업(최대 1년)에 맞고 실행 기록이 자세해요. Express는 짧고 많은 호출에 맞춘 고속 방식이에요. 배치 정리에는 보통 Standard를 써요."}], "tags": ["상태 머신", "Retry · Catch", "서비스 통합"]}, "glue": {"kicker": "PROCESS / ETL", "title": "AWS Glue ETL job", "simple": "원본을 읽어서 깨끗하게 고친 뒤 다른 곳에 저장하는 일꾼이에요.", "what": "서버리스 Apache Spark 기반 ETL 서비스예요. ETL은 추출(Extract), 변환(Transform), 적재(Load)예요. PySpark 스크립트를 올려 두고 실행하면 AWS가 필요한 컴퓨팅을 띄워서 돌리고, 끝나면 정리해요. 실행한 시간만큼만 비용이 들어요. 실행할 때 파라미터를 넘길 수 있어서 같은 스크립트를 여러 번 재사용해요.", "why": "데이터가 커지면 한 대의 컴퓨터로 처리하기 어려워요. Spark는 여러 컴퓨터가 나눠서 처리해서 대용량을 빠르게 다룰 수 있고, Glue는 그 서버를 직접 관리하지 않아도 되게 해 줘요.", "role": "Raw 영역의 원본을 읽어서 같은 이벤트의 중복을 하나로 줄이고, 결과를 Parquet으로 Clean 영역에 저장해요.", "points": [{"h": "중복 제거의 기본 방식", "t": "이벤트마다 고유한 키(예: 실행 ID + 이벤트 ID)를 정해서, 같은 키가 여러 번 나오면 가장 먼저 도착한 한 줄만 남겨요. 이렇게 같은 입력으로 여러 번 돌려도 결과가 같게 만드는 성질을 멱등성이라고 해요."}, {"h": "원본은 읽기만 해요", "t": "원본 영역은 그대로 두고 결과만 새 영역에 써요. 출력 경로가 입력 경로와 겹치지 않는지 확인하는 것도 좋은 습관이에요."}, {"h": "Glue 대신 쓸 수 있는 것", "t": "작은 변환은 Athena의 CTAS(SQL로 결과 테이블 만들기)로도 돼요. 큰 데이터나 복잡한 변환은 Spark가 유리해요."}], "tags": ["ETL", "Spark", "멱등성", "서버리스"]}, "s3_clean": {"kicker": "DATA LAKE / CLEAN", "title": "S3 · Clean 영역", "simple": "오류와 중복을 정리해서 바로 분석에 쓸 수 있게 만든 깨끗한 데이터 창고예요.", "what": "원본을 검증하고 정리한 데이터를 두는 영역이에요. Silver 또는 Curated라고도 불러요. 보통 분석에 빠른 컬럼형 파일 형식(Parquet)으로 저장하고, 자주 거는 조건(날짜 등)으로 폴더를 나눠요.", "why": "원본은 중복과 오류가 섞여 있어서 바로 집계하면 숫자가 틀려요. 한 번 정리해서 따로 두면 분석하는 사람들이 같은 깨끗한 데이터를 믿고 쓸 수 있어요.", "role": "Glue의 결과가 저장되고, Athena가 여기를 조회해서 정확한 건수와 금액을 보여 줘요.", "points": [{"h": "원본과 숫자가 다른 이유", "t": "원본에는 중복이 있어서 건수와 금액이 부풀려져요. 정제본에서는 중복이 빠져서 실제 값에 가까워요. 둘을 나란히 비교하면 정제가 잘 됐는지 확인할 수 있어요."}, {"h": "덮어쓰기와 이력 보관", "t": "정제 결과를 매번 같은 폴더에 덮어쓰면 최신 상태만 남고, 날짜별 폴더로 나누면 이력이 남아요. 어느 쪽이 맞는지는 필요에 따라 정해요."}], "tags": ["Silver", "Parquet", "정제"]}, "athena": {"kicker": "SERVE / QUERY", "title": "Amazon Athena", "simple": "S3에 있는 파일을 서버 없이 SQL로 바로 조회하는 도구예요.", "what": "서버리스 쿼리 서비스예요. S3의 데이터를 복사하지 않고 그 자리에서 읽어서 표준 SQL로 조회해요. 테이블의 구조(컬럼, 위치)는 Glue Data Catalog에 저장해 두고, 쿼리가 스캔한 데이터 양만큼 요금이 나가요.", "why": "분석용 데이터베이스를 따로 구축하지 않아도 레이크에 쌓인 데이터를 바로 분석할 수 있어요. 쓰지 않을 때는 비용이 거의 들지 않아요.", "role": "원본, 정제본, 집계 결과를 같은 SQL로 조회해서 서로 비교하고 검증해요.", "points": [{"h": "스캔량이 곧 비용이에요", "t": "필요한 컬럼과 파티션만 읽도록 Parquet과 파티션을 쓰면 스캔량이 줄어 비용과 시간이 함께 줄어요."}, {"h": "데이터를 옮기지 않아요", "t": "CREATE EXTERNAL TABLE은 S3 파일을 가리키는 정의만 만들 뿐이에요. 파일이 바뀌면 조회 결과도 바로 바뀌고, 테이블을 지워도 파일은 남아요."}, {"h": "결과 저장 위치", "t": "쿼리 결과는 지정한 S3 위치에 파일로 저장돼요. 작업 그룹(workgroup)으로 결과 위치와 비용 한도를 관리해요."}], "tags": ["서버리스 SQL", "스캔량 과금", "외부 테이블"]}, "tbl_raw": {"kicker": "TABLE / RAW", "title": "원본 테이블 (JSON)", "simple": "원본 JSON 파일을 표처럼 읽을 수 있게 정의해 둔 테이블이에요.", "what": "데이터는 S3에 두고, 컬럼 이름·타입·파일 위치만 카탈로그에 등록한 외부 테이블이에요. JSON은 파일 안에 컬럼 정보가 없어서 JsonSerDe 같은 읽기 규칙(SerDe)을 지정해 줘요.", "why": "파일을 일일이 열어 보지 않고 SQL로 조회하고, 원본이 정말 이런 모양인지 확인하는 용도예요.", "role": "정제 전 원본의 건수와 금액을 확인하고 정제본과 비교하는 기준이 돼요.", "points": [{"h": "SerDe란", "t": "Serializer/Deserializer의 줄임말로, 파일의 한 줄을 테이블의 컬럼으로 바꾸는 방법이에요."}, {"h": "JSON의 조건", "t": "JSON 객체 하나가 한 줄에 있어야 읽혀요. 여러 객체가 한 줄에 붙어 있으면 일부만 읽혀요."}], "tags": ["외부 테이블", "SerDe", "JSON Lines"]}, "tbl_clean": {"kicker": "TABLE / CLEAN", "title": "정제본 테이블 (Parquet)", "simple": "정리된 Parquet 파일을 SQL로 읽는 테이블이에요.", "what": "Parquet은 파일 안에 컬럼 이름과 타입이 들어 있어서 SerDe를 따로 지정하지 않고 STORED AS PARQUET만 쓰면 돼요. 폴더로 파티션을 나눈 경우에는 새 폴더가 생길 때 파티션을 등록해야 조회돼요.", "why": "정제 결과를 빠르고 싸게 조회하려는 용도예요.", "role": "중복이 빠진 결과를 조회해서 원본과 비교해요.", "points": [{"h": "파티션을 등록하지 않으면", "t": "오류 없이 0건이 나와요. MSCK REPAIR TABLE이나 ALTER TABLE ADD PARTITION으로 폴더를 등록해요."}], "tags": ["Parquet", "파티션 등록"]}, "zeppelin": {"kicker": "NOTEBOOK", "title": "Apache Zeppelin 노트북", "simple": "웹 브라우저에서 SQL을 한 문단씩 실행하고 결과를 바로 보는 노트북이에요.", "what": "Apache Zeppelin은 웹 기반 노트북이에요. 문단(paragraph) 단위로 코드를 쓰고 실행하며, 문단 맨 위에 %flink.ssql처럼 어떤 엔진(인터프리터)으로 실행할지 적어요. 결과는 표나 차트로 바로 볼 수 있어요. Managed Service for Apache Flink의 Studio 노트북은 이 Zeppelin 위에서 동작해요.", "why": "스트림 처리를 처음부터 애플리케이션으로 만들지 않아도, 노트북에서 SQL을 쓰고 바로 실행해 보면서 만들 수 있어요. 실험과 학습에 편해요.", "role": "Flink SQL(테이블 만들기, 1분 창 집계)을 작성하고 실행하는 화면이에요.", "points": [{"h": "문단은 위에서 아래로 한 개씩", "t": "앞 문단이 만든 테이블을 뒤 문단이 쓰는 구조라서 순서가 중요해요. 한꺼번에 실행하면 아직 만들어지지 않은 테이블을 참조해서 오류가 날 수 있어요."}, {"h": "노트를 가져오고 내보내기", "t": "노트는 JSON 파일로 내보내고(Export) 다른 곳에서 가져올(Import) 수 있어서, 같은 문단을 공유하기 쉬워요."}, {"h": "임시 테이블", "t": "CREATE TEMPORARY TABLE로 만든 테이블은 현재 세션에만 있어요. 세션을 다시 시작하면 사라져서 다시 만들어야 해요."}], "tags": ["노트북", "문단 실행", "%flink.ssql"]}, "flink": {"kicker": "PROCESS / STREAMING", "title": "Amazon Managed Service for Apache Flink", "simple": "이벤트가 들어오는 즉시 계속 계산해서 결과를 내보내는 실시간 처리 엔진이에요.", "what": "Apache Flink를 관리형으로 제공하는 서비스예요. Flink는 끝나지 않는 스트림을 상태(state)를 유지하며 계산하는 엔진이고, 이벤트 시간과 윈도우 집계에 강해요. Studio 노트북은 Zeppelin에서 Flink SQL로 바로 개발하게 해 줘요. 실행 단위는 KPU(처리 용량 단위)이고 실행하는 동안 요금이 나가요.", "why": "데이터가 쌓이기를 기다렸다가 배치로 계산하면 결과가 늦어요. 실시간으로 계산하면 1분 단위 매출이나 이상 징후를 거의 즉시 볼 수 있어요.", "role": "Kinesis 원본 스트림을 읽어 1분 창으로 건수와 금액을 집계하고, 결과를 집계 스트림으로 내보내요.", "points": [{"h": "배치 쿼리와 다른 점", "t": "배치 쿼리는 한 번 읽고 끝나지만, 스트리밍 쿼리는 계속 실행 상태로 남아 새 이벤트를 기다려요. 그래서 INSERT 문단이 FINISHED가 되지 않고 RUNNING으로 남는 것이 정상이에요."}, {"h": "시작 위치(LATEST)", "t": "스트림을 읽는 시작 위치를 LATEST로 두면 쿼리가 시작된 이후에 들어온 이벤트만 처리해요. 과거 데이터를 처리하려면 시작 위치를 다르게 정해야 해요."}, {"h": "배치와 시작 방식이 달라요", "t": "배치 작업은 스케줄러가 정해진 시간에 시작시키고 끝나면 멈춰요. 스트리밍 애플리케이션은 한 번 시작하면 계속 실행되므로 별도의 스케줄러가 필요 없어요. 대신 켜 둔 시간 동안 계속 비용이 나가요."}, {"h": "Studio와 상시 실행 앱", "t": "Studio 노트북은 개발·실험용이에요. 오래 돌릴 때는 노트를 애플리케이션으로 배포해 안정적으로 운영해요."}, {"h": "비용에 주의", "t": "실행 중에는 처리하는 이벤트가 없어도 요금이 나가요. 실습이 끝나면 문단을 취소하고 노트북을 중지해야 해요."}], "tags": ["Flink SQL", "KPU", "상시 실행", "상태 유지"]}, "window": {"kicker": "CONCEPT / WINDOW", "title": "1분 텀블링 창 · 워터마크", "simple": "이벤트를 1분 단위의 겹치지 않는 칸에 담아서 칸마다 합계를 내는 방법이에요.", "what": "윈도우는 스트림을 시간 구간으로 나눠 집계하는 방식이에요. 텀블링(tumbling) 윈도우는 길이가 고정되고 서로 겹치지 않아요. 예를 들어 1분 창이면 12:00~12:01, 12:01~12:02처럼 칸이 나뉘고, 이벤트는 자기 시각에 해당하는 칸에 들어가요. 슬라이딩(겹치는 창)과 세션(활동이 끊길 때까지) 윈도우도 있어요.", "why": "끝이 없는 스트림에는 '전체 합계'가 없어서, 일정 구간으로 잘라야 집계 결과를 낼 수 있어요. 분 단위 매출, 초당 요청 수 같은 지표가 이렇게 만들어져요.", "role": "Flink가 원본 이벤트를 1분 창으로 묶어서 창별 건수와 금액을 계산해요.", "points": [{"h": "워터마크", "t": "'이 시각 이전의 이벤트는 거의 다 도착했다'고 판단하는 기준이에요. 예를 들어 5초 워터마크는 이벤트 시각보다 5초까지 늦게 도착한 이벤트를 기다려 준 뒤 창을 닫아요."}, {"h": "창이 닫혀야 결과가 나와요", "t": "창은 워터마크가 창 끝을 지나야 닫히고 결과가 나가요. 이벤트가 더 이상 안 들어오면 마지막 창이 닫히지 않을 수 있어서, 시간을 앞으로 보내는 신호용 이벤트(heartbeat)를 쓰기도 해요."}, {"h": "지연 이벤트", "t": "워터마크보다 늦게 도착한 이벤트는 이미 닫힌 창에 반영되지 않을 수 있어요. 그래서 원본 건수와 집계 합계가 조금 다를 수 있어요."}], "tags": ["Tumbling window", "워터마크", "late event"]}, "kinesis_agg": {"kicker": "STREAMING / OUTPUT", "title": "Kinesis Data Streams (집계 결과)", "simple": "계산한 결과를 다시 스트림으로 내보내서, 필요한 곳에서 받아 쓰게 하는 출구예요.", "what": "스트림 처리 결과를 파일이나 테이블 대신 또 하나의 스트림에 쓰는 패턴이에요. 원본 스트림과 같은 종류의 서비스이지만 내용이 '1분 집계 결과'라는 점이 달라요.", "why": "집계 결과를 받아 가려는 곳이 여러 곳일 수 있어요(저장, 대시보드, 알림). 스트림에 두면 각자 필요한 방식으로 읽어 갈 수 있고, 처리 엔진과 소비자를 분리할 수 있어요.", "role": "Flink의 집계 결과를 받아서 Firehose가 S3로 가져갈 수 있게 해요.", "points": [{"h": "결과가 적어요", "t": "집계 결과는 원본보다 훨씬 적어서(1분에 한 줄 정도) 샤드 하나로도 충분한 경우가 많아요."}], "tags": ["스트림 출력", "소비자 분리"]}, "firehose_agg": {"kicker": "DELIVERY", "title": "Firehose (집계 저장)", "simple": "집계 결과 스트림을 모아서 S3에 파일로 저장해 주는 배달부예요.", "what": "앞의 Firehose와 같은 서비스이고, 소스가 집계 결과 스트림이라는 점만 달라요. 집계 결과를 JSON으로 저장할 때는 레코드마다 줄바꿈을 붙여서 한 줄에 하나가 되게 해요.", "why": "스트림의 데이터는 보존 기간이 지나면 사라지므로, 결과를 오래 두고 분석하려면 S3 같은 저장소로 옮겨야 해요.", "role": "집계 결과를 S3 집계 영역으로 옮겨서 Athena로 조회할 수 있게 해요.", "points": [{"h": "원본용과 다른 설정", "t": "원본은 이벤트 자체에 줄바꿈이 들어 있게 만들 수 있지만, 집계 결과는 Flink가 줄바꿈 없이 쓰므로 Firehose에서 구분자를 붙여 줘야 해요."}], "tags": ["줄바꿈 구분자", "S3 적재"]}, "s3_agg": {"kicker": "DATA LAKE / AGGREGATED", "title": "S3 · 집계 영역", "simple": "이미 요약된 숫자만 모아 두는 작은 창고예요. 대시보드가 읽기 좋아요.", "what": "집계 결과(예: 1분 창별 건수와 금액)를 저장하는 영역이에요. Gold 또는 Serving 영역이라고도 불러요. 원본보다 데이터가 훨씬 적고, 이미 계산이 끝나 있어서 조회가 빨라요.", "why": "분석하는 사람이 매번 원본을 합산하지 않아도 요약된 값을 바로 볼 수 있어요. 대시보드나 보고서가 읽는 곳으로 알맞아요.", "role": "실시간으로 계산된 1분 집계 결과가 쌓여요.", "points": [{"h": "원본과 합계 비교", "t": "집계 합계가 원본과 정확히 같지 않을 수 있어요. 지연 이벤트나 중복이 어느 창에 포함되는지에 따라 달라지기 때문이에요. 그래서 둘을 비교해서 차이가 어디서 오는지 확인해요."}], "tags": ["Gold", "요약 데이터"]}, "tbl_agg": {"kicker": "TABLE / AGGREGATED", "title": "집계 테이블 (JSON)", "simple": "1분 집계 결과 파일을 SQL로 읽는 테이블이에요.", "what": "집계 영역의 JSON 파일을 가리키는 외부 테이블이에요. 컬럼은 창 시작·끝 시각, 건수, 금액 같은 요약 값이에요.", "why": "실시간 집계가 제대로 됐는지 원본과 비교하려는 용도예요.", "role": "Athena에서 창별 결과를 조회해 원본 기준 값과 맞춰 봐요.", "points": [{"h": "타임스탬프 형식", "t": "JSON의 시각이 문자열이면 Athena에서는 string으로 읽고, 필요하면 변환 함수를 써요."}], "tags": ["외부 테이블", "JSON"]}, "iam_firehose": {"kicker": "IAM / SERVICE ROLE", "title": "Firehose용 서비스 역할", "simple": "Firehose가 Kinesis에서 읽고 S3에 쓸 수 있도록 허락해 주는 출입증이에요.", "what": "IAM 역할은 사람이 아니라 서비스가 쓰는 권한 묶음이에요. 두 가지로 이루어져요. 신뢰 정책은 '누가 이 역할을 쓸 수 있는가'(여기서는 Firehose 서비스)이고, 권한 정책은 '무엇을 할 수 있는가'(Kinesis 읽기, S3 쓰기)예요. 서비스는 이 역할로 임시 자격 증명을 받아서 일해요.", "why": "서비스에 비밀번호나 키를 직접 주지 않고, 필요한 권한만 임시로 빌려 주기 위해서예요.", "role": "Firehose가 원본 스트림을 읽고 S3에 파일을 쓰는 권한을 가져요.", "points": [{"h": "최소 권한 원칙", "t": "필요한 리소스와 동작만 허용하는 것이 원칙이에요. 예를 들어 '모든 S3'가 아니라 '이 버킷의 쓰기'만 허용해요."}, {"h": "방금 만든 역할의 반영 지연", "t": "IAM 변경은 전 세계에 반영되는 데 잠깐 걸려서, 만든 직후 바로 쓰면 오류가 날 수 있어요. 보통 1~2분 뒤에 다시 시도하면 돼요."}], "tags": ["신뢰 정책", "권한 정책", "최소 권한"]}, "iam_glue": {"kicker": "IAM / SERVICE ROLE", "title": "Glue용 서비스 역할", "simple": "Glue job이 S3의 원본을 읽고 정제본을 쓸 수 있도록 허락하는 출입증이에요.", "what": "Glue가 job을 실행할 때 쓰는 역할이에요. 기본 Glue 서비스 권한에 더해, 접근할 S3 버킷과 폴더에 대한 읽기·쓰기 권한을 붙여요.", "why": "job이 실행되는 컴퓨팅은 AWS가 대신 띄워 주기 때문에, 그 컴퓨팅이 내 데이터에 접근하려면 이 역할이 필요해요.", "role": "Raw 영역을 읽고 Clean 영역에 쓰는 권한이에요.", "points": [{"h": "범위를 좁히는 방법", "t": "S3 전체 대신 이 파이프라인이 쓰는 버킷만 허용하면, 스크립트 실수로 다른 데이터를 건드리는 일을 막을 수 있어요."}], "tags": ["Glue 서비스 역할", "S3 접근"]}, "iam_flink": {"kicker": "IAM / SERVICE ROLE", "title": "Flink용 서비스 역할", "simple": "Flink가 스트림을 읽고 쓰고, 테이블 정보를 읽을 수 있도록 허락하는 출입증이에요.", "what": "Managed Service for Apache Flink의 Studio가 실행될 때 쓰는 역할이에요. 신뢰 정책의 서비스는 Managed Flink이고, Kinesis 스트림 읽기·쓰기, Glue Data Catalog 접근, 로그 쓰기 권한이 필요해요.", "why": "노트북에서 실행한 SQL이 실제로는 Flink 클러스터에서 돌고, 그 클러스터가 스트림에 접근하려면 이 역할이 있어야 해요.", "role": "원본 스트림 읽기, 집계 스트림 쓰기, 카탈로그 접근을 맡아요.", "points": [{"h": "교육용 권한과 운영 권한", "t": "실습에서는 넓은 관리형 정책을 붙이기도 하지만, 운영에서는 대상 스트림과 카탈로그로만 제한해요."}], "tags": ["Studio 역할", "스트림 접근"]}, "iam_flow": {"kicker": "IAM / SERVICE ROLE", "title": "스케줄 · 워크플로용 역할", "simple": "스케줄러와 Step Functions가 다음 단계를 시작할 수 있도록 허락하는 출입증이에요.", "what": "스케줄러가 상태 머신을 시작하려면 states:StartExecution 권한이 필요하고, 상태 머신이 Glue job을 실행하려면 glue:StartJobRun, GetJobRun 같은 권한이 필요해요. 각각 자기 역할에 필요한 만큼만 줘요.", "why": "자동화가 한 단계씩 이어질 때마다 앞 서비스가 다음 서비스를 호출할 권한을 가져야 해요. 호출할 대상을 특정 상태 머신이나 특정 job으로 좁힐 수 있어요.", "role": "시간이 되면 상태 머신이 시작되고, 상태 머신이 Glue job을 실행하게 해 줘요.", "points": [{"h": "새 job을 쓸 때 권한도 추가", "t": "job을 새로 만들거나 바꾸면 그 job을 허용 목록에 넣어야 해요. 허용되지 않으면 AccessDenied 오류로 실행이 거부돼요."}], "tags": ["StartExecution", "StartJobRun"]}, "catalog": {"kicker": "COMMON / METADATA", "title": "AWS Glue Data Catalog", "simple": "어떤 데이터가 어디에 있고 컬럼이 뭔지 적어 둔 도서관 목록이에요.", "what": "테이블의 이름, 컬럼과 타입, 데이터 위치, 파티션 정보를 모아 두는 중앙 메타데이터 저장소예요. Athena, Glue, Flink Studio 등 여러 서비스가 같은 카탈로그를 공유해요. 데이터 자체는 저장하지 않아요.", "why": "서비스마다 테이블 정의를 따로 만들면 서로 달라져요. 한 곳에 정의해 두면 모든 도구가 같은 이름과 구조로 같은 데이터를 봐요.", "role": "Athena가 조회할 테이블 정의와 Flink Studio의 테이블 정의를 보관해요.", "points": [{"h": "크롤러와 직접 정의", "t": "크롤러가 파일을 훑어 구조를 추측해서 테이블을 만들 수도 있고, DDL로 직접 정확하게 정의할 수도 있어요. 구조가 정해져 있으면 직접 정의가 안전해요."}, {"h": "메타데이터만 지워도 데이터는 남아요", "t": "외부 테이블을 지워도 S3의 파일은 그대로 있어요. 다시 같은 정의를 만들면 같은 데이터를 다시 볼 수 있어요."}], "tags": ["메타데이터", "테이블 정의", "공유 카탈로그"]}, "cloudwatch": {"kicker": "COMMON / OBSERVABILITY", "title": "Amazon CloudWatch", "simple": "각 서비스가 남기는 로그와 숫자(지표)를 모아 보고, 이상하면 알려 주는 관제실이에요.", "what": "로그(Logs), 지표(Metrics), 알람(Alarms), 대시보드를 제공하는 모니터링 서비스예요. Glue job의 출력과 오류, Flink의 로그, Firehose의 전달 지표가 여기에 모여요.", "why": "자동으로 돌아가는 파이프라인은 사람이 지켜보지 않아서, 실패했을 때 어디서 왜 실패했는지 로그로 찾고 알람으로 바로 알아야 해요.", "role": "Glue 실행 로그, Flink 로그, Firehose 전달 상태를 확인하는 곳이에요.", "points": [{"h": "알람 연결", "t": "지표가 기준을 넘으면(예: job 실패) SNS로 이메일이나 메신저 알림을 보내도록 연결하는 것이 일반적인 운영 방식이에요."}], "tags": ["Logs", "Metrics", "Alarms"]}, "c_mode": {"kicker": "CONCEPT", "title": "스트림 처리 vs 배치 처리", "simple": "'도착하는 즉시 계산'이 스트림, '모아 두었다가 한꺼번에 계산'이 배치예요.", "what": "배치는 일정 시간 데이터를 모은 뒤 한 번에 처리해요. 정확하고 다시 돌리기 쉽지만 결과가 늦어요. 스트림은 데이터가 올 때마다 바로 처리해요. 결과가 빠르지만 지연 도착이나 중복을 다뤄야 해요. 두 경로를 함께 두는 구조를 람다 아키텍처(배치 레이어 + 스피드 레이어)라고 불러요.", "why": "'빠른 근사값'과 '느리지만 정확한 값'이 둘 다 필요한 경우가 많아요. 대시보드는 실시간 값을 보고, 정산이나 보고서는 배치로 정리한 값을 써요.", "role": "이 그림의 메인 흐름은 '스트리밍으로 받아서 배치로 정리'하는 구조예요. 갈라져 나온 분기는 스트림 처리(Flink)예요.", "points": [{"h": "스트리밍 데이터를 배치로 처리하기", "t": "이벤트는 계속 들어오지만(스트리밍 수집), 쌓아 두었다가 주기적으로 한꺼번에 처리하는(배치 처리) 조합이 가장 흔해요. 이렇게 짧은 주기로 도는 배치를 마이크로 배치라고도 불러요. 처리 방식은 수집 방식과 따로 정할 수 있어요."}, {"h": "선택 기준", "t": "결과가 몇 분, 몇 시간 늦어도 되면 배치, 즉시 반응해야 하면 스트림이에요. 스트림은 운영이 더 어렵고 비용도 계속 나가요."}, {"h": "두 숫자가 다를 수 있어요", "t": "실시간 집계는 지연 이벤트를 놓칠 수 있고 배치는 모두 모은 뒤 계산해서, 같은 구간의 숫자가 조금 다를 수 있어요. 이 차이를 이해하고 쓰는 것이 중요해요."}], "tags": ["Lambda architecture", "지연 시간", "정확도"]}, "c_dup": {"kicker": "CONCEPT", "title": "중복과 At-least-once", "simple": "이벤트를 '최소 한 번은 반드시 전달'하는 방식은, 가끔 같은 이벤트가 두 번 올 수 있어요.", "what": "메시징 시스템의 전달 보장은 보통 세 가지예요. At-most-once(최대 한 번, 유실 가능), At-least-once(최소 한 번, 중복 가능), Exactly-once(정확히 한 번, 구현이 어렵고 비쌈). Kinesis 같은 서비스에서 Producer 재시도가 있으면 At-least-once라서 중복이 생길 수 있어요.", "why": "유실보다 중복이 다루기 쉬워서 At-least-once가 흔히 쓰여요. 대신 받는 쪽에서 중복을 처리해야 숫자가 맞아요.", "role": "그래서 배치 구간의 Glue가 같은 이벤트 ID는 한 줄만 남겨요.", "points": [{"h": "중복 제거 방법", "t": "이벤트마다 고유 키(ID)를 두고 같은 키는 하나만 남겨요. 키 설계가 중요해요. 키가 너무 넓으면 서로 다른 이벤트를 합쳐 버리고, 너무 좁으면 중복이 남아요."}, {"h": "멱등성", "t": "같은 입력을 여러 번 처리해도 결과가 같게 만드는 성질이에요. 중복이 있어도 결과가 안 틀리게 하는 핵심 설계예요."}], "tags": ["At-least-once", "멱등성", "고유 키"]}, "c_time": {"kicker": "CONCEPT", "title": "이벤트 시간 vs 처리 시간", "simple": "'일이 일어난 시각'과 '시스템이 그걸 받은 시각'은 달라요. 집계는 보통 앞의 것을 써요.", "what": "이벤트 시간(event time)은 이벤트가 실제 발생한 시각이고, 처리 시간(processing time)은 시스템이 이벤트를 받아 처리한 시각이에요. 네트워크 지연, 재시도, 장애 때문에 두 시각은 차이가 나요.", "why": "처리 시간으로 집계하면 지연된 이벤트가 엉뚱한 시간대에 들어가요. 이벤트 시간으로 집계하면 실제 발생 시각 기준으로 정확하게 묶을 수 있지만, 늦게 오는 이벤트를 어디까지 기다릴지(워터마크)를 정해야 해요.", "role": "실시간 분기의 1분 창은 이벤트 시간을 기준으로 이벤트를 묶어요.", "points": [{"h": "늦게 온 이벤트", "t": "워터마크보다 늦게 오면 이미 닫힌 창에 반영되지 않아요. 얼마나 기다릴지는 정확도와 지연 시간의 균형으로 정해요."}], "tags": ["event time", "watermark", "late data"]}, "c_zone": {"kicker": "CONCEPT", "title": "Raw / Clean / 집계 영역 (메달리온 구조)", "simple": "데이터를 '원본 → 정리됨 → 요약됨' 단계별 폴더로 나눠서 쌓는 정리법이에요.", "what": "데이터 레이크를 단계별 영역으로 나누는 설계예요. Bronze(원본 그대로), Silver(검증·중복 제거·정리), Gold(집계·요약, 보고서용)로 부르기도 해요. 단계가 올라갈수록 데이터가 깨끗해지고 작아져요.", "why": "원본을 지키면서 목적에 맞는 가공본을 따로 만들 수 있어서, 문제가 생기면 원본에서 다시 만들고 사용자는 목적에 맞는 영역만 읽어요.", "role": "메인 흐름은 Raw → Clean, 실시간 분기는 집계 영역으로 이어져요.", "points": [{"h": "영역마다 권한을 나눠요", "t": "원본은 소수만 읽게 하고, 정제본과 집계본은 분석가에게 열어 주는 식으로 접근을 구분해요."}], "tags": ["Bronze · Silver · Gold", "데이터 레이크"]}, "c_parquet": {"kicker": "CONCEPT", "title": "Parquet과 파티션", "simple": "분석이 빠르고 싸지도록, 데이터를 '열 단위'로 저장하고 '폴더'로 나눠 두는 방법이에요.", "what": "Parquet은 컬럼형 파일 형식이에요. 같은 컬럼의 값을 모아서 저장해서, 필요한 컬럼만 읽을 수 있고 압축이 잘 돼요. 파일 안에 스키마가 들어 있어요. 파티션은 날짜 같은 값으로 폴더를 나누는 방식이고, 폴더 이름이 키=값 형태(예: date=2026-01-01)면 쿼리가 필요한 폴더만 읽어요.", "why": "Athena처럼 읽은 양만큼 요금이 나가는 곳에서 스캔량을 크게 줄여요. JSON이나 CSV는 행 단위라서 한 컬럼만 필요해도 전체를 읽어야 해요.", "role": "Glue가 Clean 영역을 Parquet으로 저장하는 이유예요.", "points": [{"h": "파티션을 너무 잘게 나누면", "t": "폴더와 파일이 너무 많아져서 작은 파일이 늘고 오히려 느려져요. 자주 거는 조건이면서 값의 종류가 적당한 컬럼으로 나누는 것이 좋아요."}, {"h": "파티션 등록", "t": "새 폴더가 생겨도 카탈로그에 등록하기 전에는 쿼리에 보이지 않아요. 등록을 자동화하는 방법(파티션 프로젝션 등)도 있어요."}], "tags": ["컬럼형", "압축", "파티션 프루닝"]}};
+  var scrim = document.getElementById('scrim');
+  var drawer = document.getElementById('drawer');
+  var closeBtn = document.getElementById('drawer-close');
+  var titleEl = document.getElementById('drawer-title');
+  var kickerEl = document.getElementById('drawer-kicker');
+  var bodyEl = document.getElementById('drawer-body');
+  var activeBtn = null;
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+  function field(label, text, cls){
+    if(!text) return '';
+    return '<div class="field"><p class="field-label">'+label+'</p><p class="field-value'+(cls?' '+cls:'')+'">'+escapeHtml(text)+'</p></div>';
+  }
+  function openDrawer(id, btn){
+    var d = DATA[id];
+    if(!d) return;
+    if(activeBtn) activeBtn.classList.remove('active');
+    activeBtn = btn;
+    if(btn) btn.classList.add('active');
+    kickerEl.textContent = d.kicker;
+    titleEl.textContent = d.title;
+    var html = '';
+    html += field('쉽게 말하면', d.simple, 'simple');
+    html += field('개념', d.what);
+    html += field('왜 쓰나', d.why);
+    html += field('이 그림에서의 역할', d.role);
+    if(d.points && d.points.length){
+      html += '<div class="field"><p class="field-label">알아 두면 좋은 점</p><div class="point-list">';
+      d.points.forEach(function(p){
+        html += '<div class="point"><p class="point-h">'+escapeHtml(p.h)+'</p><p class="point-t">'+escapeHtml(p.t)+'</p></div>';
+      });
+      html += '</div></div>';
+    }
+    if(d.tags && d.tags.length){
+      html += '<div class="field"><p class="field-label">키워드</p><div class="tag-row">';
+      d.tags.forEach(function(t){ html += '<span class="tag">'+escapeHtml(t)+'</span>'; });
+      html += '</div></div>';
+    }
+    bodyEl.innerHTML = html;
+    scrim.classList.add('open');
+    drawer.classList.add('open');
+  }
+  function closeDrawer(){
+    scrim.classList.remove('open');
+    drawer.classList.remove('open');
+    if(activeBtn) activeBtn.classList.remove('active');
+    activeBtn = null;
+  }
+  document.addEventListener('click', function(e){
+    var btn = e.target.closest('button[data-id]');
+    if(btn){ openDrawer(btn.getAttribute('data-id'), btn); }
+  });
+  closeBtn.addEventListener('click', closeDrawer);
+  scrim.addEventListener('click', closeDrawer);
+  document.addEventListener('keydown', function(e){ if(e.key === 'Escape') closeDrawer(); });
+})();
+</script>
+</body>
+</html>
