@@ -304,9 +304,9 @@ footer.note button:hover{text-decoration:underline}
 <body>
 <div class="wrap">
   <header class="page">
-    <p class="eyebrow">AWS data pipeline · 스트리밍 수집 → 배치 처리 (+ 실시간 분기)</p>
+    <p class="eyebrow">AWS data pipeline</p>
     <h1>실시간 이벤트 데이터 파이프라인 지도</h1>
-    <p class="lead">메인 흐름은 이벤트를 스트리밍으로 받아서(Kinesis → Firehose → S3) 배치로 정리해요(Scheduler → Step Functions → Glue). Kinesis에서 아래로 갈라져 Flink로 바로 집계한 뒤, 마지막에 Athena에서 다시 만나요.</p>
+    <p class="lead">수집 → 배치 정리, 그리고 Flink 실시간 집계. 박스를 누르면 설명이 열려요.</p>
   </header>
 
   <div class="legend">
@@ -314,7 +314,7 @@ footer.note button:hover{text-decoration:underline}
     <span><i class="lg svc2"></i>데이터 서비스</span>
     <span><i class="lg auto"></i>자동 실행 (시간·순서 제어)</span>
     <span><i class="lg you"></i>데이터를 만드는 쪽 · 노트북</span>
-    <span class="lg-note">박스를 누르면 개념과 쓰는 이유가 나와요.</span>
+    
   </div>
 
   <div class="gg">
@@ -423,7 +423,7 @@ footer.note button:hover{text-decoration:underline}
       <section class="zone agg">
         <h3 class="zone-cap"><b class="no br">4</b>집계 저장</h3>
         <p class="zdesc">요약된 데이터만 보관</p>
-        <button type="button" class="svc" data-id="s3_agg"><img class="ico" src="icons/s3.svg" alt=""><span class="lbl">S3 · 집계 영역<small>1분 창별 건수 · 금액</small></span></button>
+        <button type="button" class="svc" data-id="s3_agg"><img class="ico" src="icons/s3.svg" alt=""><span class="lbl">S3 · aggregated<small>집계 영역 · 1분 창별 건수·금액</small></span></button>
         <button type="button" class="pill" data-id="tbl_agg">집계 테이블<br>(JSON)</button>
       </section>
     </div>
