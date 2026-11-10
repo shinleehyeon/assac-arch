@@ -135,6 +135,12 @@ footer.note button:hover{text-decoration:underline}
 .point-t{margin:0;font-size:13px;line-height:1.65;color:#3d4a57}
 .tag-row{display:flex;gap:6px;flex-wrap:wrap}
 .tag{font-size:11px;border:1px solid var(--border);color:var(--muted);padding:3px 8px;border-radius:100px}
+[data-id="kinesis"],[data-id="kinesis_agg"]{position:relative}
+[data-id="kinesis"]::after,[data-id="kinesis_agg"]::after{content:"눌러 보세요";position:absolute;top:-9px;right:-6px;font-size:9px;font-weight:700;color:#fff;background:#8c4fff;border-radius:100px;padding:2px 6px;pointer-events:none}
+@media (prefers-reduced-motion:no-preference){[data-id="kinesis"]::after,[data-id="kinesis_agg"]::after{animation:tryit 1.6s ease-in-out infinite}}
+@keyframes tryit{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+.hublink{display:inline-block;font-size:13px;font-weight:600;color:#0073bb;border:1.5px solid #0073bb;border-radius:8px;padding:8px 12px;text-decoration:none}
+.hublink:hover{background:#eef6fb}
 .tag.warn{border-color:#e6c27a;color:#8a5a00}
 .empty-state{display:flex;flex-direction:column;align-items:center;text-align:center;padding:36px 16px;color:var(--muted);gap:8px}
 .empty-state p{margin:0;font-size:13px;line-height:1.6;max-width:28ch}
@@ -327,7 +333,7 @@ footer.note button:hover{text-decoration:underline}
     <aside class="srcs">
       <h3>데이터 만드는 쪽</h3>
       <p class="zdesc">앱 · 서버 · 센서</p>
-      <button type="button" class="svc" data-id="producer"><span class="tile ink"><img src="icons/user.svg" alt=""></span><span class="lbl">이벤트 생성기<small>Producer · 이벤트를 계속 보냄</small></span></button>
+      <button type="button" class="svc" data-id="producer"><span class="tile ink"><img src="icons/user.svg" alt=""></span><span class="lbl">이벤트 생성기<small>Producer · Kinesis에 씀</small></span></button>
       <p class="zdesc" style="margin-top:12px">클릭, 주문, 로그 같은<br>이벤트가 끊임없이 발생</p>
     </aside>
     <span class="harr" style="grid-column:2;grid-row:3"></span>
@@ -336,7 +342,7 @@ footer.note button:hover{text-decoration:underline}
       <section class="zone ing">
         <h3 class="zone-cap"><b class="no">1</b>받기 · 입구</h3>
         <p class="zdesc">여기서 분기가 갈라져요</p>
-        <button type="button" class="svc" data-id="kinesis"><span class="tile purple"><b>KDS</b></span><span class="lbl">Kinesis Data Streams<small>이벤트가 들어오는 입구</small></span></button>
+        <button type="button" class="svc" data-id="kinesis"><span class="tile purple"><b>KDS</b></span><span class="lbl">Kinesis Data Streams<small>쌓아 두면 읽는 쪽이 가져감</small></span></button>
       </section>
     </div>
     <span class="harr" style="grid-column:4;grid-row:3"></span>
@@ -344,7 +350,7 @@ footer.note button:hover{text-decoration:underline}
       <section class="zone ing">
         <h3 class="zone-cap"><b class="no">2</b>저장소로 전달</h3>
         <p class="zdesc">모아서 파일로 배달</p>
-        <button type="button" class="svc" data-id="firehose"><span class="tile purple"><b>KDF</b></span><span class="lbl">Firehose<small>스트림 → S3 자동 전달</small></span></button>
+        <button type="button" class="svc" data-id="firehose"><span class="tile purple"><b>KDF</b></span><span class="lbl">Firehose<small>Kinesis를 읽어 S3에 씀</small></span></button>
       </section>
     </div>
     <span class="harr" style="grid-column:6;grid-row:3"></span>
@@ -398,7 +404,7 @@ footer.note button:hover{text-decoration:underline}
         <p class="zdesc">쌓지 않고 바로 계산</p>
         <button type="button" class="svc" data-id="zeppelin"><span class="tile zep"><b>Zep</b></span><span class="lbl">Zeppelin 노트북<small>SQL을 작성하고 실행</small></span></button>
         <i class="vline"></i>
-        <button type="button" class="svc" data-id="flink"><span class="tile flink"><b>Flink</b></span><span class="lbl">Managed Flink<small>스트림을 계속 계산</small></span></button>
+        <button type="button" class="svc" data-id="flink"><span class="tile flink"><b>Flink</b></span><span class="lbl">Managed Flink<small>Kinesis를 읽고 결과를 씀</small></span></button>
         <button type="button" class="pill" data-id="window">1분 텀블링 창<br>이벤트 시간 · 워터마크</button>
       </section>
     </div>
@@ -407,7 +413,7 @@ footer.note button:hover{text-decoration:underline}
       <section class="zone stream">
         <h3 class="zone-cap"><b class="no br">2</b>집계 결과 스트림</h3>
         <p class="zdesc">계산 결과를 다시 스트림으로</p>
-        <button type="button" class="svc" data-id="kinesis_agg"><span class="tile purple"><b>KDS</b></span><span class="lbl">Kinesis Data Streams<small>1분 집계 결과</small></span></button>
+        <button type="button" class="svc" data-id="kinesis_agg"><span class="tile purple"><b>KDS</b></span><span class="lbl">Kinesis Data Streams<small>Flink가 쓴 1분 집계 결과</small></span></button>
       </section>
     </div>
     <span class="harr" style="grid-column:8;grid-row:5"></span>
@@ -415,7 +421,7 @@ footer.note button:hover{text-decoration:underline}
       <section class="zone ing">
         <h3 class="zone-cap"><b class="no br">3</b>저장소로 전달</h3>
         <p class="zdesc">모아서 파일로 배달</p>
-        <button type="button" class="svc" data-id="firehose_agg"><span class="tile purple"><b>KDF</b></span><span class="lbl">Firehose<small>스트림 → S3 자동 전달</small></span></button>
+        <button type="button" class="svc" data-id="firehose_agg"><span class="tile purple"><b>KDF</b></span><span class="lbl">Firehose<small>집계 스트림을 읽어 S3에 씀</small></span></button>
       </section>
     </div>
     <span class="harr" style="grid-column:10;grid-row:5"></span>
@@ -462,7 +468,7 @@ footer.note button:hover{text-decoration:underline}
   </div>
 
   <footer class="note">
-    아이콘은 조회용이에요. 설명은 각 서비스의 일반적인 개념과 사용 이유를 정리한 거예요. 그림의 실시간 분기(집계 스트림, 집계 Firehose, 집계 S3)는 구조를 보여 주려고 모두 만들어졌다고 가정하고 그렸어요. 이름이 적힌 색 타일은 공식 아이콘 파일이 이 폴더에 없는 서비스예요.
+    아이콘은 조회용이에요. 설명은 각 서비스의 일반적인 개념과 사용 이유를 정리한 거예요. 화살표는 데이터가 가는 방향이에요. Kinesis는 보내지 않고, Firehose와 Flink가 스트림을 읽어 가요. 이름이 적힌 색 타일은 공식 아이콘 파일이 이 폴더에 없는 서비스예요.
   </footer>
 </div>
 
@@ -502,6 +508,7 @@ footer.note button:hover{text-decoration:underline}
     if(!text) return '';
     return '<div class="field"><p class="field-label">'+label+'</p><p class="field-value'+(cls?' '+cls:'')+'">'+escapeHtml(text)+'</p></div>';
   }
+  var HUB = {kinesis:1, kinesis_agg:1, firehose:1, firehose_agg:1, flink:1, producer:1};
   function openDrawer(id, btn){
     var d = DATA[id];
     if(!d) return;
@@ -521,6 +528,9 @@ footer.note button:hover{text-decoration:underline}
         html += '<div class="point"><p class="point-h">'+escapeHtml(p.h)+'</p><p class="point-t">'+escapeHtml(p.t)+'</p></div>';
       });
       html += '</div></div>';
+    }
+    if(HUB[id]){
+      html += '<div class="field"><a class="hublink" href="stream-kinesis-hub.html">쓰는 쪽 · 읽는 쪽 그림으로 보기 →</a></div>';
     }
     if(d.tags && d.tags.length){
       html += '<div class="field"><p class="field-label">키워드</p><div class="tag-row">';

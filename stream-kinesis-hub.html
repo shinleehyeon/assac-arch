@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kinesis 쓰기·읽기 지도</title>
+<style>
+:root{
+  --ink:#16191f;
+  --muted:#545b64;
+  --border:#d5dbe1;
+  --surface-2:#f4f6f8;
+  --write:#c25400;
+  --read:#0073bb;
+  --purple:#8c4fff;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+body{margin:0;background:#fff;color:var(--ink);font-family:"Helvetica Neue",Arial,"Apple SD Gothic Neo","Noto Sans KR",sans-serif}
+.wrap{max-width:1100px;margin:0 auto;padding:20px 16px 40px}
+.eyebrow{margin:0;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+h1{margin:2px 0 0;font-size:20px;font-weight:700;letter-spacing:-.01em}
+.lead{margin:4px 0 0;color:var(--muted);font-size:14px}
+.back{display:inline-block;margin-bottom:10px;font-size:12px;color:var(--read);text-decoration:none}
+.back:hover{text-decoration:underline}
+.stage{margin-top:14px;border:1.5px solid #232f3e;border-radius:10px;padding:8px;background:#fff}
+svg{display:block;width:100%;height:auto}
+svg text{font-family:inherit}
+.t1{font-size:13px;font-weight:700;fill:#232f3e}
+.t2{font-size:11px;fill:#545b64}
+.lab{font-size:12px;font-weight:700}
+.lab.w{fill:var(--write)}
+.lab.r{fill:var(--read)}
+.n,.e{transition:opacity .2s,filter .2s}
+.dim{opacity:.22}
+.off{opacity:.45;filter:grayscale(1)}
+.off line,.off rect:not(.keep){stroke-dasharray:5 4}
+.clk{cursor:pointer}
+.clk:focus{outline:none}
+.clk:focus-visible rect.box,.clk:hover rect.box{stroke-width:3.2}
+.sel rect.box{stroke-width:3.4;fill:#ece0ff}
+.hint{font-size:11px;font-weight:700;fill:#8c4fff}
+@media (prefers-reduced-motion:no-preference){.hint{animation:bob 1.4s ease-in-out infinite}}
+@keyframes bob{0%,100%{transform:translateX(0)}50%{transform:translateX(5px)}}
+.ctl{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px}
+.btn{font:inherit;font-size:13px;font-weight:600;border:1.5px solid #0073bb;color:#0073bb;background:#fff;border-radius:8px;padding:7px 12px;cursor:pointer}
+.btn:hover{background:#eef6fb}
+.btn.on{background:#0073bb;color:#fff}
+.capbox{margin-top:12px;border:1.5px solid #8c4fff;border-radius:8px;padding:12px 14px;background:#faf7ff;min-height:76px}
+.capbox h2{margin:0 0 4px;font-size:14px}
+.capbox p{margin:0;font-size:13px;line-height:1.6;color:#3d4a57}
+.cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:16px}
+.card{border:1px solid var(--border);border-radius:8px;padding:12px 14px;background:var(--surface-2)}
+.card h2{margin:0 0 4px;font-size:14px}
+.card p{margin:0;font-size:13px;line-height:1.6;color:#3d4a57}
+@media (max-width:760px){.cards{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <a class="back" href="stream-pipeline-arch.html">← 파이프라인 지도로</a>
+  <p class="eyebrow">Kinesis hub</p>
+  <h1>Kinesis는 보내지 않아요. 쓰는 쪽과 읽는 쪽이 있어요.</h1>
+  <p class="lead">Kinesis는 보관소이고, 쓰는 쪽이 넣으면 읽는 쪽이 각자 가져가요.</p>
+
+  <div class="stage">
+    <svg viewBox="0 0 1100 600" role="img" aria-label="Python이 Kinesis에 쓰고, Firehose와 Flink가 Kinesis를 읽는 구조">
+      <defs>
+        <marker id="aw" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#c25400"/></marker>
+        <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#0073bb"/></marker>
+      </defs>
+
+      <!-- legend -->
+      <g transform="translate(790,22)">
+        <line x1="0" y1="8" x2="46" y2="8" stroke="#c25400" stroke-width="2.4" marker-end="url(#aw)"/>
+        <text x="58" y="12" class="t2">쓰기 (보관소에 넣음)</text>
+        <line x1="0" y1="34" x2="46" y2="34" stroke="#0073bb" stroke-width="2.4" stroke-dasharray="6 4" marker-end="url(#ar)"/>
+        <text x="58" y="38" class="t2">읽기 (보관소에서 가져감)</text>
+      </g>
+
+      <!-- row captions -->
+      <text x="20" y="62" class="t2">쓰는 쪽</text>
+      <text x="20" y="206" class="t2">보관소</text>
+      <text x="20" y="342" class="t2">읽는 쪽</text>
+
+      <!-- producer -->
+      <g class="n" id="n-prod">
+<rect x="255" y="25" width="150" height="70" rx="8" fill="#fff" stroke="#232f3e" stroke-width="1.5"/>
+      <rect x="267" y="43" width="34" height="34" rx="7" fill="#232f3e"/>
+      <image href="icons/user.svg" x="271" y="47" width="26" height="26"/>
+      <text x="312" y="56" class="t1">이벤트 생성기</text>
+      <text x="312" y="73" class="t2">Python</text>
+      </g>
+
+      <text id="hint" class="hint" x="424" y="204">◀ 눌러 보세요</text>
+      <!-- raw kinesis -->
+      <g class="n clk" id="n-kraw" role="button" tabindex="0" aria-label="Kinesis 원본 스트림">
+<rect class="box" x="250" y="165" width="160" height="70" rx="8" fill="#f5efff" stroke="#8c4fff" stroke-width="2"/>
+      <rect x="262" y="183" width="34" height="34" rx="7" fill="#8c4fff"/>
+      <text x="279" y="204" text-anchor="middle" style="font-size:9px;font-weight:700;fill:#fff">KDS</text>
+      <text x="304" y="196" class="t1">Kinesis</text>
+      <text x="304" y="213" class="t2">원본 이벤트 보관</text>
+      </g>
+
+      <!-- write: python -> kinesis -->
+      <g class="e" id="e-w1">
+<line x1="330" y1="95" x2="330" y2="162" stroke="#c25400" stroke-width="2.4" marker-end="url(#aw)"/>
+      <text x="344" y="135" class="lab w">쓰기</text>
+      </g>
+
+      <!-- firehose raw -->
+      <g class="n" id="n-fh">
+<rect x="95" y="325" width="150" height="70" rx="8" fill="#fff" stroke="#232f3e" stroke-width="1.5"/>
+      <rect x="107" y="343" width="34" height="34" rx="7" fill="#8c4fff"/>
+      <text x="124" y="364" text-anchor="middle" style="font-size:9px;font-weight:700;fill:#fff">KDF</text>
+      <text x="150" y="356" class="t1">Firehose</text>
+      <text x="150" y="373" class="t2">읽어서 S3에 씀</text>
+      </g>
+
+      <!-- flink -->
+      <g class="n" id="n-fl">
+<rect x="425" y="325" width="150" height="70" rx="8" fill="#fff" stroke="#232f3e" stroke-width="1.5"/>
+      <rect x="437" y="343" width="34" height="34" rx="7" fill="#6f42c1"/>
+      <text x="454" y="364" text-anchor="middle" style="font-size:9px;font-weight:700;fill:#fff">Flink</text>
+      <text x="480" y="356" class="t1">Flink</text>
+      <text x="480" y="373" class="t2">읽고 계산해서 씀</text>
+      </g>
+
+      <!-- reads -->
+      <g class="e" id="e-rfh">
+<line x1="170" y1="325" x2="285" y2="238" stroke="#0073bb" stroke-width="2.4" stroke-dasharray="6 4" marker-end="url(#ar)"/>
+      <text x="196" y="270" class="lab r">읽기</text>
+      </g>
+      <g class="e" id="e-rfl">
+<line x1="500" y1="325" x2="375" y2="238" stroke="#0073bb" stroke-width="2.4" stroke-dasharray="6 4" marker-end="url(#ar)"/>
+      <text x="454" y="270" class="lab r">읽기</text>
+      </g>
+
+      <!-- s3 raw -->
+      <g class="n" id="n-s3r">
+<rect x="95" y="465" width="150" height="70" rx="8" fill="#fff" stroke="#232f3e" stroke-width="1.5"/>
+      <image href="icons/s3.svg" x="107" y="483" width="34" height="34"/>
+      <text x="150" y="496" class="t1">S3 · raw</text>
+      <text x="150" y="513" class="t2">원본 그대로</text>
+      </g>
+      <g class="e" id="e-fhs3">
+<line x1="170" y1="395" x2="170" y2="462" stroke="#c25400" stroke-width="2.4" marker-end="url(#aw)"/>
+      <text x="184" y="435" class="lab w">쓰기</text>
+      </g>
+
+      <!-- flink -> agg kinesis (write) -->
+      <g class="e" id="e-flk">
+<line x1="575" y1="360" x2="717" y2="360" stroke="#c25400" stroke-width="2.4" marker-end="url(#aw)"/>
+      <text x="632" y="350" class="lab w">쓰기</text>
+      </g>
+
+      <!-- agg kinesis -->
+      <g class="n clk" id="n-kagg" role="button" tabindex="0" aria-label="Kinesis 집계 스트림">
+<rect class="box" x="720" y="325" width="160" height="70" rx="8" fill="#f5efff" stroke="#8c4fff" stroke-width="2"/>
+      <rect x="732" y="343" width="34" height="34" rx="7" fill="#8c4fff"/>
+      <text x="749" y="364" text-anchor="middle" style="font-size:9px;font-weight:700;fill:#fff">KDS</text>
+      <text x="774" y="356" class="t1">Kinesis</text>
+      <text x="774" y="373" class="t2">집계 결과 보관</text>
+      </g>
+
+      <!-- firehose agg -->
+      <g class="n" id="n-fa">
+<rect x="725" y="465" width="150" height="70" rx="8" fill="#fff" stroke="#232f3e" stroke-width="1.5"/>
+      <rect x="737" y="483" width="34" height="34" rx="7" fill="#8c4fff"/>
+      <text x="754" y="504" text-anchor="middle" style="font-size:9px;font-weight:700;fill:#fff">KDF</text>
+      <text x="780" y="496" class="t1">Firehose</text>
+      <text x="780" y="513" class="t2">읽어서 S3에 씀</text>
+      </g>
+      <g class="e" id="e-rfa">
+<line x1="800" y1="465" x2="800" y2="398" stroke="#0073bb" stroke-width="2.4" stroke-dasharray="6 4" marker-end="url(#ar)"/>
+      <text x="814" y="435" class="lab r">읽기</text>
+      </g>
+
+      <!-- s3 agg -->
+      <g class="n" id="n-s3a">
+<rect x="925" y="465" width="170" height="70" rx="8" fill="#fff" stroke="#232f3e" stroke-width="1.5"/>
+      <image href="icons/s3.svg" x="937" y="483" width="34" height="34"/>
+      <text x="980" y="496" class="t1">S3 · aggregated</text>
+      <text x="980" y="513" class="t2">1분 단위 요약</text>
+      </g>
+      <g class="e" id="e-fas3">
+<line x1="875" y1="500" x2="922" y2="500" stroke="#c25400" stroke-width="2.4" marker-end="url(#aw)"/>
+      <text x="888" y="490" class="lab w">쓰기</text>
+      </g>
+    </svg>
+  </div>
+
+  <div class="ctl">
+    <button type="button" class="btn" id="btn-flink" aria-pressed="false">Flink 끄기</button>
+    <span class="t2" style="font-size:12px;color:#545b64">Kinesis 박스를 누르거나 Flink를 꺼 보세요.</span>
+  </div>
+  <div class="capbox" id="capbox" aria-live="polite">
+    <h2 id="cap-h">Kinesis를 눌러 보세요</h2>
+    <p id="cap-p">박스를 누르면 이 스트림에 쓰는 쪽과 읽는 쪽이 강조돼요.</p>
+  </div>
+
+  <div class="cards">
+    <section class="card">
+      <h2>Kinesis는 가만히 있어요</h2>
+      <p>어디로 보내지 않아요. 들어온 이벤트를 24시간 보관할 뿐이에요.</p>
+    </section>
+    <section class="card">
+      <h2>읽는 쪽이 각자 가져가요</h2>
+      <p>Firehose와 Flink가 같은 스트림을 따로 읽어요. 서로 방해하지 않아요.</p>
+    </section>
+    <section class="card">
+      <h2>한쪽이 꺼져도 괜찮아요</h2>
+      <p>Flink가 꺼져도 Python과 Firehose는 계속돼요. 안 만들어지는 건 집계뿐이에요.</p>
+    </section>
+  </div>
+</main>
+<script>
+(function(){
+  var $=function(id){return document.getElementById(id)};
+  var nodes=['n-prod','n-kraw','n-fh','n-fl','n-s3r','n-kagg','n-fa','n-s3a'];
+  var edges=['e-w1','e-rfh','e-rfl','e-fhs3','e-flk','e-rfa','e-fas3'];
+  var all=nodes.concat(edges);
+  var flinkDown=false, sel=null;
+  var SETS={
+    kraw:{on:['n-prod','n-kraw','n-fh','n-fl','e-w1','e-rfh','e-rfl'],
+      h:'원본 Kinesis: 쓰는 쪽 1개, 읽는 쪽 2개',
+      p:'Python이 쓰고, Firehose와 Flink가 각자 읽어 가요. 같은 이벤트를 따로 읽기 때문에 서로 방해하지 않아요.'},
+    kagg:{on:['n-fl','n-kagg','n-fa','e-flk','e-rfa'],
+      h:'집계 Kinesis: 쓰는 쪽 Flink, 읽는 쪽 Firehose',
+      p:'Flink가 1분 집계 결과를 여기에 쓰고, Firehose가 읽어서 S3 aggregated에 저장해요.'}
+  };
+  var DOWN=['n-fl','e-rfl','e-flk','n-kagg','e-rfa','n-fa','e-fas3','n-s3a'];
+  function render(){
+    all.forEach(function(id){var el=$(id);el.classList.remove('dim','off','sel')});
+    if(sel && !flinkDown){
+      all.forEach(function(id){if(SETS[sel].on.indexOf(id)<0)$(id).classList.add('dim')});
+      $('n-'+sel).classList.add('sel');
+    }
+    if(flinkDown){DOWN.forEach(function(id){var el=$(id);el.classList.remove('dim');el.classList.add('off')})}
+    var h,p;
+    if(flinkDown){
+      h='Flink가 꺼졌어요';
+      p='Python → Kinesis → Firehose → S3 raw는 그대로 계속돼요. 멈추는 건 집계(회색 부분)뿐이에요.';
+    }else if(sel){h=SETS[sel].h;p=SETS[sel].p}
+    else{h='Kinesis를 눌러 보세요';p='박스를 누르면 이 스트림에 쓰는 쪽과 읽는 쪽이 강조돼요.'}
+    $('cap-h').textContent=h;$('cap-p').textContent=p;
+    var b=$('btn-flink');b.textContent=flinkDown?'Flink 켜기':'Flink 끄기';
+    b.classList.toggle('on',flinkDown);b.setAttribute('aria-pressed',flinkDown);
+  }
+  function pick(k){
+    sel=(sel===k)?null:k;
+    $('hint').style.display='none';
+    render();
+  }
+  [['n-kraw','kraw'],['n-kagg','kagg']].forEach(function(x){
+    var el=$(x[0]);
+    el.addEventListener('click',function(){pick(x[1])});
+    el.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();pick(x[1])}});
+  });
+  $('btn-flink').addEventListener('click',function(){flinkDown=!flinkDown;sel=null;$('hint').style.display='none';render()});
+  render();
+})();
+</script>
+
+</body>
+</html>
